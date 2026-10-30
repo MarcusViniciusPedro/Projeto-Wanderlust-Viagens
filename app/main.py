@@ -10,8 +10,12 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from app.catalogo.router import router as catalogo_router
 from app.core.config import get_settings
+from app.estatisticas.router import router as estatisticas_router
+from app.recomendacao.router import router as recomendacao_router
 from app.usuarios.router import router as usuarios_router
+from app.vendas.router import router as vendas_router
 
 settings = get_settings()
 
@@ -31,6 +35,7 @@ def health() -> dict[str, str]:
 # Routers dos microsservicos. Novos modulos sao registrados aqui conforme
 # forem implementados nas proximas features.
 app.include_router(usuarios_router)
-# app.include_router(catalogo.router)
-# app.include_router(vendas.router)
-# app.include_router(recomendacao.router)
+app.include_router(catalogo_router)
+app.include_router(vendas_router)
+app.include_router(recomendacao_router)
+app.include_router(estatisticas_router)
