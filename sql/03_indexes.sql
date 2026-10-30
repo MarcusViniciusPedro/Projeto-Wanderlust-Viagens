@@ -47,14 +47,9 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Venda_conta_turista' A
         INCLUDE (data_venda, valor_total);
 GO
 
-/* IX_Usuario_email
-   Autenticacao/login por e-mail (RF1/RF2). A coluna email ja possui
-   UNIQUE (UQ_Usuario_email), que cria um indice unico; este indice
-   nomeado existe apenas para documentar o padrao de acesso de login.
-   Criado de forma condicional para nao duplicar caso ja haja o indice
-   do UNIQUE constraint. */
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Usuario_email' AND object_id = OBJECT_ID('dbo.Usuario'))
-   AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_Usuario_email' AND object_id = OBJECT_ID('dbo.Usuario'))
-    CREATE INDEX IX_Usuario_email
-        ON dbo.Usuario (email);
-GO
+/* Autenticacao/login por e-mail (RF1/RF2):
+   NAO ha indice dedicado aqui de proposito. A coluna email ja possui a
+   constraint UNIQUE (UQ_Usuario_email em 01_schema.sql), que o SQL Server
+   materializa como um indice unico sobre (email). Esse indice ja atende as
+   buscas de login por e-mail; um IX_Usuario_email seria redundante com ele.
+   Mantido apenas como este comentario para documentar o padrao de acesso. */

@@ -78,7 +78,7 @@ def buscar_credencial_por_email(
         cursor.execute(
             """
             SELECT u.id_passageiro, u.email, c.senha_hash, c.totp_secret,
-                   u.papel, u.telefone
+                   u.papel, u.telefone, c.two_factor
             FROM dbo.Usuario u
             JOIN dbo.Credencial c ON c.id_usuario = u.id_passageiro
             WHERE u.email = %s
@@ -98,4 +98,5 @@ def buscar_credencial_por_email(
         totp_secret=linha[3],
         papel=Papel(linha[4]),
         telefone=linha[5],
+        two_factor=bool(linha[6]),
     )

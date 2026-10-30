@@ -136,8 +136,8 @@ Registro de uma venda realizada.
 |----------------------|---------------|------|-------|------------------------------------------------------------------|
 | id_venda             | INT IDENTITY  | Não  | PK    | Identificador da venda (auto-incremento).                        |
 | valor_total          | DECIMAL(10,2) | Não  |       | Valor total da venda.                                            |
-| status_pagamento     | NVARCHAR(30)  | Não  |       | Estado (`Pendente`/`Pago`/`Cancelado`/`Estornado`).              |
-| forma_pagamento      | NVARCHAR(50)  | Não  |       | Forma de pagamento.                                              |
+| status_pagamento     | NVARCHAR(30)  | Não  |       | Estado (`Pendente`/`Pago`/`Cancelado`/`Estornado`) — CHECK `CK_Venda_status`. |
+| forma_pagamento      | NVARCHAR(50)  | Não  |       | Forma de pagamento (`debito`/`credito`/`pix`/`boleto`) — CHECK `CK_Venda_forma_pagamento`, alinhado ao enum `FormaPagamento` do Python. |
 | data_venda           | DATETIME2     | Não  |       | **Nota (seção 5.3)**: data/hora da venda (padrão: agora UTC).    |
 | fk_conta_turista     | INT           | Não  | FK    | FK para `Conta_turista(id_turista)` — **NO ACTION** (ver nota).  |
 | fk_conta_colaborador | INT           | Sim  | FK    | FK para `Conta_colaborador(id_colaborador)` — **NO ACTION**.     |

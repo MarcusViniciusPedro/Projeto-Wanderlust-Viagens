@@ -99,7 +99,7 @@ DECLARE @nova_venda INT;
 EXEC dbo.sp_registrar_venda
     @fk_conta_turista     = @turista2,
     @fk_pacote            = @pacote1,
-    @forma_pagamento      = N'Cartao de credito',
+    @forma_pagamento      = N'credito',  -- valor do enum FormaPagamento (CK_Venda_forma_pagamento)
     @fk_conta_colaborador = @colab,
     @status_pagamento     = N'Pago',
     @id_venda_out         = @nova_venda OUTPUT;

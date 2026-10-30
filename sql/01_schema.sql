@@ -223,7 +223,11 @@ CREATE TABLE dbo.Venda (
         REFERENCES dbo.Conta_colaborador (id_colaborador)
         ON DELETE NO ACTION,
     CONSTRAINT CK_Venda_status CHECK
-        (status_pagamento IN ('Pendente', 'Pago', 'Cancelado', 'Estornado'))
+        (status_pagamento IN ('Pendente', 'Pago', 'Cancelado', 'Estornado')),
+    -- Os valores coincidem EXATAMENTE com o enum FormaPagamento do Python
+    -- (app/vendas/schemas.py) para manter banco e aplicacao alinhados:
+    CONSTRAINT CK_Venda_forma_pagamento CHECK
+        (forma_pagamento IN ('debito', 'credito', 'pix', 'boleto'))
 );
 GO
 

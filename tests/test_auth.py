@@ -25,6 +25,7 @@ from app.core.security import (
     verificar_senha,
 )
 from app.integracoes.sms import StubSMSSender
+from app.core.security import Desafio2FAInvalidoError
 from app.usuarios.service import (
     Codigo2FAInvalidoError,
     CredenciaisInvalidasError,
@@ -116,24 +117,51 @@ def test_fluxo_2fa_usuario_inexistente_bloqueia() -> None:
 def test_fluxo_2fa_codigo_errado_bloqueia() -> None:
     cred = _credencial()
     sms = StubSMSSender()
-    iniciar_login(cred, "SenhaForte123", sms, settings=SETTINGS_TESTE)
+    resultado = iniciar_login(cred, "SenhaForte123", sms, settings=SETTINGS_TESTE)
     assert sms.ultima_mensagem is not None  # codigo foi "enviado"
     with pytest.raises(Codigo2FAInvalidoError):
-        concluir_login(cred, "000000", settings=SETTINGS_TESTE)
+        concluir_login(
+            resultado.token_desafio,
+            "000000",
+            lambda _email: cred,
+            settings=SETTINGS_TESTE,
+        )
 
 
 def test_fluxo_2fa_caminho_feliz_emite_token() -> None:
     cred = _credencial()
     sms = StubSMSSender()
-    codigo = iniciar_login(cred, "SenhaForte123", sms, settings=SETTINGS_TESTE)
+    resultado = iniciar_login(cred, "SenhaForte123", sms, settings=SETTINGS_TESTE)
 
     # O codigo tambem fica legivel pelo SMS stub (como os testes usariam).
     assert sms.ultima_mensagem is not None
     extraido = re.search(r"\d{6}", sms.ultima_mensagem.conteudo)
     assert extraido is not None
-    assert extraido.group(0) == codigo
+    assert extraido.group(0) == resultado.codigo_2fa
 
-    token = concluir_login(cred, codigo, settings=SETTINGS_TESTE)
+    token = concluir_login(
+        resultado.token_desafio,
+        resultado.codigo_2fa,
+        lambda _email: cred,
+        settings=SETTINGS_TESTE,
+    )
     payload = decodificar_token(token, settings=SETTINGS_TESTE)
     assert payload["sub"] == cred.email
     assert payload["papel"] == Papel.TURISTA.value
+
+
+def test_fluxo_2fa_etapa2_exige_desafio_valido() -> None:
+    """A etapa 2 nao emite token sem o desafio da etapa 1 (reamarracao)."""
+    cred = _credencial()
+    sms = StubSMSSender()
+    resultado = iniciar_login(cred, "SenhaForte123", sms, settings=SETTINGS_TESTE)
+
+    # Um token de desafio forjado/invalido nao conclui o login, mesmo com o
+    # codigo TOTP correto: a senha (etapa 1) permanece obrigatoria.
+    with pytest.raises(Desafio2FAInvalidoError):
+        concluir_login(
+            "token-invalido",
+            resultado.codigo_2fa,
+            lambda _email: cred,
+            settings=SETTINGS_TESTE,
+        )

@@ -226,7 +226,9 @@ estavel: empates sao desempatados pelo `id_pacote` crescente.
 
 **RF8 - Feedback agregado (`agregar_feedback`).** Agrega as `Avaliacao` de um
 pacote em um score medio (0..5) e um resumo textual deterministico (faixas
-fixas em `FAIXAS_RESUMO`), alimentando a tabela `IA_Feedback`.
+fixas em `FAIXAS_RESUMO`), alimentando a tabela `IA_Feedback`. Exposto por HTTP
+em `POST /recomendacao/feedback` (paridade de API com os demais RFs), alem de
+materializado no banco pela trigger `tr_avaliacao_atualiza_ia_feedback`.
 
 **Ciclo de feedback.** As preferencias do turista (`Preferencia`,
 `Questionario_Resposta`) alimentam a recomendacao; as `Avaliacao` pos-viagem
@@ -241,13 +243,13 @@ componente de reputacao da recomendacao.
 | RF   | Descricao                         | Onde/como foi implementado |
 |------|-----------------------------------|----------------------------|
 | RF1  | Cadastro de usuario               | `app/usuarios/router.py:cadastrar` + `repository.criar_usuario`; tabelas `Usuario`/`Credencial` (`sql/01_schema.sql`). |
-| RF2  | Autenticacao com 2FA              | `app/usuarios/router.py` (`login`, `verificar_2fa`), `app/usuarios/service.py` (`iniciar_login`/`concluir_login`), `app/core/security.py` (TOTP/JWT), SMS via `app/integracoes/sms.py`. |
+| RF2  | Autenticacao com 2FA              | `app/usuarios/router.py` (`login`, `verificar_2fa`), `app/usuarios/service.py` (`iniciar_login`/`concluir_login`), `app/core/security.py` (TOTP/JWT + token de desafio), SMS via `app/integracoes/sms.py`. A etapa 1 valida a senha e emite um **token de desafio** curto; a etapa 2 exige esse token + o codigo TOTP (reamarra as duas chamadas: nao autentica so com e-mail + codigo). Honra a flag `two_factor`. |
 | RF3  | Busca de pacotes                  | `app/catalogo/router.py:buscar_pacotes` + `app/catalogo/service.py:filtrar_pacotes`. |
 | RF4  | Orcamento por IA                  | `app/recomendacao/service.py:estimar_orcamento`; endpoint `POST /recomendacao/orcamento`. |
 | RF5  | Pagamento (maquina de estados)    | `app/vendas/service.py` (transicoes) + `app/vendas/router.py`; gateway `app/integracoes/pagamento.py`; `sql/04_programmability.sql:sp_registrar_venda`. |
 | RF6  | E-mail de confirmacao + propaganda| `app/integracoes/email.py` (`montar_email_confirmacao`, `enviar_confirmacao`). |
 | RF7  | Recomendacao de viagens           | `app/recomendacao/service.py:recomendar`/`pontuar_pacote`; endpoint `POST /recomendacao/ranking`. |
-| RF8  | Feedback agregado por IA          | `app/recomendacao/service.py:agregar_feedback`; trigger `tr_avaliacao_atualiza_ia_feedback` + tabela `IA_Feedback`. |
+| RF8  | Feedback agregado por IA          | `app/recomendacao/service.py:agregar_feedback`; endpoint `POST /recomendacao/feedback`; trigger `tr_avaliacao_atualiza_ia_feedback` + tabela `IA_Feedback`. |
 | RF9  | Visualizacao 3D / Street View     | `app/integracoes/streetview.py` + `app/catalogo/router.py:streetview_destino`. |
 | RF10 | Estatistica de turistas por destino | `app/estatisticas/service.py:agregar_turistas_por_mes` + `router.py`; view `vw_turistas_por_destino_ano` (`sql/04_programmability.sql`). |
 

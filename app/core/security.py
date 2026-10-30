@@ -93,6 +93,62 @@ def decodificar_token(token: str, settings: Optional[Settings] = None) -> dict[s
         raise TokenInvalidoError("Token invalido ou expirado.") from exc
 
 
+# --- Desafio de 2FA (reamarra a etapa 2 a etapa 1 do login) ----------------
+# A etapa 1 (senha validada) emite um "token de desafio" curto e assinado; a
+# etapa 2 precisa apresenta-lo junto com o codigo TOTP. Sem esse token, nao e
+# possivel obter o JWT so com e-mail + codigo: a senha volta a ser exigida.
+# Reusa o mesmo mecanismo JWT (sem nova cripto), distinguido pela claim
+# ``purpose='2fa_challenge'`` e por uma expiracao curta e propria.
+_PURPOSE_DESAFIO_2FA = "2fa_challenge"
+
+
+class Desafio2FAInvalidoError(RuntimeError):
+    """Levantado quando o token de desafio 2FA e invalido, expirado ou ausente."""
+
+
+def criar_token_desafio_2fa(
+    subject: str,
+    settings: Optional[Settings] = None,
+    expira_em_minutos: int = 5,
+) -> str:
+    """Emite o token de desafio da etapa 1 do 2FA (apos validar a senha).
+
+    Curta duracao (default 5 min). Carrega ``sub`` (e-mail do usuario) e a
+    claim ``purpose='2fa_challenge'`` para nao ser confundido com um JWT de
+    acesso.
+    """
+    settings = settings or get_settings()
+    agora = datetime.now(timezone.utc)
+    payload: dict[str, Any] = {
+        "sub": subject,
+        "purpose": _PURPOSE_DESAFIO_2FA,
+        "iat": agora,
+        "exp": agora + timedelta(minutes=expira_em_minutos),
+    }
+    return jwt.encode(payload, _jwt_secret(settings), algorithm=settings.jwt_algorithm)
+
+
+def validar_token_desafio_2fa(token: str, settings: Optional[Settings] = None) -> str:
+    """Valida o token de desafio e retorna o ``sub`` (e-mail) nele contido.
+
+    Levanta ``Desafio2FAInvalidoError`` se o token for invalido/expirado ou
+    nao carregar o proposito esperado (``purpose='2fa_challenge'``).
+    """
+    settings = settings or get_settings()
+    try:
+        payload = decodificar_token(token, settings=settings)
+    except TokenInvalidoError as exc:
+        raise Desafio2FAInvalidoError(
+            "Desafio de 2FA invalido ou expirado. Refaca o login."
+        ) from exc
+    if payload.get("purpose") != _PURPOSE_DESAFIO_2FA:
+        raise Desafio2FAInvalidoError("Token apresentado nao e um desafio de 2FA.")
+    subject = payload.get("sub")
+    if not subject:
+        raise Desafio2FAInvalidoError("Desafio de 2FA sem identificacao de usuario.")
+    return str(subject)
+
+
 # --- 2FA / TOTP ------------------------------------------------------------
 def gerar_segredo_totp() -> str:
     """Gera um novo segredo base32 para configurar o TOTP de um usuario."""

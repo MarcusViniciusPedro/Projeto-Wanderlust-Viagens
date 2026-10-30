@@ -1,8 +1,9 @@
-"""Rotas HTTP do AIV: orcamento (RF4) e recomendacao (RF7).
+"""Rotas HTTP do AIV: orcamento (RF4), recomendacao (RF7) e feedback (RF8).
 
 Endpoints:
   POST /recomendacao/orcamento   - estima o custo total de um pacote (RF4)
   POST /recomendacao/ranking     - ranqueia pacotes por preferencia (RF7)
+  POST /recomendacao/feedback    - agrega avaliacoes de um pacote (RF8)
 
 As rotas operam sobre dados enviados no corpo da requisicao e delegam a
 heuristica deterministica em ``service.py`` (funcoes puras). Nao dependem de
@@ -17,10 +18,11 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.recomendacao.schemas import (
+    Avaliacao,
     PacoteParaRecomendacao,
     Preferencia,
 )
-from app.recomendacao.service import estimar_orcamento, recomendar
+from app.recomendacao.service import agregar_feedback, estimar_orcamento, recomendar
 
 router = APIRouter(prefix="/recomendacao", tags=["recomendacao"])
 
@@ -78,6 +80,29 @@ class ItemRankingResposta(BaseModel):
     dentro_do_orcamento: bool
 
 
+class AvaliacaoIn(BaseModel):
+    """Avaliacao de um pacote (nota 1..5) para a agregacao de feedback (RF8)."""
+
+    nota: int = Field(ge=1, le=5)
+    comentario: Optional[str] = None
+
+
+class FeedbackRequest(BaseModel):
+    """Entrada da agregacao de feedback por IA (RF8)."""
+
+    fk_pacote: int
+    avaliacoes: List[AvaliacaoIn] = Field(default_factory=list)
+
+
+class FeedbackResposta(BaseModel):
+    """Resposta da agregacao de feedback (RF8)."""
+
+    fk_pacote: int
+    score_agregado: Optional[float]
+    total_avaliacoes: int
+    resumo: str
+
+
 @router.post("/orcamento", response_model=OrcamentoResposta)
 def orcamento(dados: OrcamentoRequest) -> OrcamentoResposta:
     """Estima o custo total de um pacote de forma deterministica (RF4)."""
@@ -121,3 +146,23 @@ def ranking(dados: RankingRequest) -> List[ItemRankingResposta]:
         )
         for it in itens
     ]
+
+
+@router.post("/feedback", response_model=FeedbackResposta)
+def feedback(dados: FeedbackRequest) -> FeedbackResposta:
+    """Agrega as avaliacoes de um pacote em score + resumo textual (RF8).
+
+    Expoe por HTTP a mesma heuristica deterministica que a trigger
+    ``tr_avaliacao_atualiza_ia_feedback`` aplica no banco, dando paridade de
+    API com os demais RFs. Nao depende de banco: recebe as avaliacoes no corpo.
+    """
+    avaliacoes = [
+        Avaliacao(nota=a.nota, comentario=a.comentario) for a in dados.avaliacoes
+    ]
+    resultado = agregar_feedback(dados.fk_pacote, avaliacoes)
+    return FeedbackResposta(
+        fk_pacote=resultado.fk_pacote,
+        score_agregado=resultado.score_agregado,
+        total_avaliacoes=resultado.total_avaliacoes,
+        resumo=resultado.resumo,
+    )

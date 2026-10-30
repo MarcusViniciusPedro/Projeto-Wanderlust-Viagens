@@ -70,16 +70,27 @@ class LoginRequest(BaseModel):
 
 
 class LoginDesafioResposta(BaseModel):
-    """Resposta da etapa 1: 2FA exigido, codigo enviado por SMS (RF2)."""
+    """Resposta da etapa 1 do login (RF2).
+
+    ``token_desafio`` reamarra a etapa 2 a etapa 1: foi emitido apenas apos a
+    senha ser validada e precisa ser reapresentado em ``POST /auth/2fa/verificar``
+    junto com o codigo. Assim, nao e possivel obter o JWT so com e-mail + codigo.
+    """
 
     desafio_2fa: bool = True
+    token_desafio: str
     detalhe: str = "Codigo de verificacao enviado por SMS."
 
 
 class Verificar2FARequest(BaseModel):
-    """Etapa 2 do login: verificacao do codigo 2FA (RF2)."""
+    """Etapa 2 do login: desafio da etapa 1 + codigo 2FA (RF2).
 
-    email: str = Field(max_length=254, pattern=_EMAIL_PATTERN)
+    O e-mail NAO e aceito aqui de proposito: a identidade vem do
+    ``token_desafio`` (claim ``sub``), que so e emitido apos a senha ser
+    validada na etapa 1.
+    """
+
+    token_desafio: str
     codigo: str
 
 
