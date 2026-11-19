@@ -248,9 +248,10 @@ HTTP 503):
 .venv/bin/pytest -q
 ```
 
-A suite tem **64 testes** cobrindo a logica de negocio (orcamento,
+A suite tem **89 testes** cobrindo a logica de negocio (orcamento,
 recomendacao, agregacao de feedback, autenticacao/2FA, autorizacao por papel,
-maquina de estados de pagamento, busca, e-mail, estatisticas, configuracao).
+maquina de estados de pagamento, busca, e-mail, estatisticas, configuracao,
+CORS e diagnostico de conexao com o banco).
 Os testes unitarios **nao exigem um SQL Server vivo**.
 
 Os testes de integracao que precisam de um banco real sao marcados com
