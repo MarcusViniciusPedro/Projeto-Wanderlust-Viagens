@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wanderlust-viagens"
+version = "0.1.0"
+description = "Back-end da agencia Wanderlust Viagens (FastAPI + SQL Server/T-SQL)"
+readme = "README.md"
+requires-python = ">=3.11"
+# Dependencias de producao.
+# - fastapi/uvicorn: framework async, API-first, OpenAPI automatico.
+# - pydantic/pydantic-settings: validacao de dados e configuracao via .env.
+# - bcrypt: hash de senhas (RNF3/LGPD); usado diretamente pela camada de seguranca.
+# - pyotp: 2FA/TOTP.
+# - python-jose[cryptography]: emissao/validacao de tokens JWT.
+# - pymssql: driver SQL Server que instala via wheel (sem ODBC do sistema).
+# - python-dotenv: carregamento do arquivo .env em desenvolvimento.
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "pydantic-settings",
+    "bcrypt",
+    "pyotp",
+    "python-jose[cryptography]",
+    "pymssql",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+# Dependencias de desenvolvimento/testes.
+# - pytest: execucao de testes unitarios.
+# - httpx: cliente HTTP usado pelo TestClient do FastAPI.
+dev = [
+    "pytest",
+    "httpx",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+# Testes de integracao (que exigem SQL Server vivo) ficam marcados com
+# @pytest.mark.integration e sao pulados por padrao. Para rodar a suite
+# completa com um banco disponivel use: pytest -m "integration".
+addopts = "-m 'not integration'"
+markers = [
+    "integration: testes que exigem uma instancia SQL Server viva (pulados por padrao)",
+]
+testpaths = ["tests"]

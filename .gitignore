@@ -1,0 +1,17 @@
+# Ambiente virtual
+.venv/
+
+# Bytecode Python
+__pycache__/
+*.pyc
+
+# Variaveis de ambiente / segredos
+.env
+
+# Cache de testes
+.pytest_cache/
+
+# Artefatos de build/empacotamento
+*.egg-info/
+dist/
+build/
