@@ -8,9 +8,9 @@ aberta quando um recurso que precisa dela for efetivamente usado.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Optional
+from typing import List, Optional
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +27,20 @@ class Settings(BaseSettings):
     # --- Aplicacao ---------------------------------------------------------
     app_name: str = "Wanderlust Viagens API"
     app_version: str = "0.1.0"
+
+    # --- CORS --------------------------------------------------------------
+    # Origens permitidas para o front-end chamar a API pelo navegador.
+    # O padrao cobre os servidores locais mais comuns de dev (Live Server na
+    # 5500 e a propria API/uvicorn na 8000). Aceita lista JSON ou string
+    # separada por virgula via WANDERLUST_CORS_ORIGINS.
+    cors_origins: List[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:5500",
+            "http://127.0.0.1:5500",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+        ]
+    )
 
     # --- Banco de dados SQL Server (opcional) -----------------------------
     db_server: Optional[str] = None
@@ -55,6 +69,21 @@ class Settings(BaseSettings):
 
     # --- Flag de robustez para testes -------------------------------------
     db_configured_flag: bool = Field(default=False, exclude=True)
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _parse_cors_origins(cls, value: object) -> object:
+        """Aceita tambem string separada por virgula alem de lista JSON.
+
+        Se o valor vier como string sem formato de lista JSON, divide por
+        virgula e remove espacos, permitindo WANDERLUST_CORS_ORIGINS=
+        "http://a,http://b" sem precisar de aspas/colchetes.
+        """
+        if isinstance(value, str):
+            texto = value.strip()
+            if not texto.startswith("["):
+                return [item.strip() for item in texto.split(",") if item.strip()]
+        return value
 
     @property
     def db_configured(self) -> bool:
