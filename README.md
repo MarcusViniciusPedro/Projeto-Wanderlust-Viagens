@@ -139,6 +139,9 @@ python3 -m venv .venv
 
 - Documentacao interativa (Swagger): `http://localhost:8000/docs`
 - Health check (nao depende do banco): `http://localhost:8000/health`
+- Diagnostico de banco: `http://localhost:8000/health/db` tenta conectar ao SQL
+  Server e rodar `SELECT 1`; responde **HTTP 503** enquanto o banco nao estiver
+  configurado e `{"status": "ok", "db": "conectado"}` quando a conexao funciona.
 
 ### Variaveis de ambiente
 
@@ -151,6 +154,7 @@ endpoints que exigem banco respondem **HTTP 503** com mensagem clara.
 
 | Variavel de ambiente           | Campo em `Settings`     | Padrao / observacao                                      |
 |--------------------------------|-------------------------|-----------------------------------------------------------|
+| `WANDERLUST_CORS_ORIGINS`      | `cors_origins`          | origens de dev local (ver abaixo); aceita lista JSON ou string separada por virgulas |
 | `WANDERLUST_DB_SERVER`         | `db_server`             | `None` (banco opcional)                                   |
 | `WANDERLUST_DB_PORT`           | `db_port`               | `1433`                                                    |
 | `WANDERLUST_DB_NAME`           | `db_name`               | `None`                                                    |
@@ -173,6 +177,70 @@ Alem destas, `Settings` define `app_name`, `app_version` e
 configuravel para nao depender de um provedor real). O campo `db_configured`
 indica se ha dados suficientes (`server`, `name`, `user`, `password`) para
 conectar.
+
+`WANDERLUST_CORS_ORIGINS` controla quais origens o navegador pode usar para
+chamar a API (necessario porque o front-end roda em uma porta diferente da
+API). O padrao ja cobre o desenvolvimento local:
+`http://localhost:5500`, `http://127.0.0.1:5500`, `http://localhost:8000` e
+`http://127.0.0.1:8000`. Aceita uma lista JSON (ex.:
+`["http://localhost:5500"]`) ou uma string separada por virgulas.
+
+## Rodar front-end e back-end juntos (desenvolvimento local)
+
+O front-end (HTML/CSS/JS na raiz do projeto) consome a API via `fetch`. Em
+desenvolvimento, suba os dois lados em paralelo:
+
+```bash
+# 1) back-end (API) na porta 8000
+.venv/bin/uvicorn app.main:app --reload
+
+# 2) em outro terminal, servir o front-end estatico a partir da RAIZ do projeto
+python -m http.server 5500
+```
+
+Alternativa ao `http.server`: a extensao **Live Server** do VSCode (tambem na
+porta 5500). Depois, abra `http://localhost:5500/index.html` no navegador.
+
+O front-end usa `API_BASE = http://localhost:8000` (definido em `js/api.js`).
+Como o navegador serve as paginas de uma origem diferente (porta 5500) da API
+(porta 8000), o CORS precisa liberar essa origem: a origem usada para servir o
+front (ex.: `http://localhost:5500` ou `http://127.0.0.1:5500`) deve estar em
+`WANDERLUST_CORS_ORIGINS`. O valor padrao ja inclui essas origens de dev, entao
+nenhum ajuste e necessario quando voce usa as portas acima. Use sempre a mesma
+forma de host (`localhost` ou `127.0.0.1`) nos dois lados.
+
+### Fluxo de login 2FA no front-end
+
+A tela `pages/login.html` faz o login em duas etapas:
+
+1. **Etapa 1** envia `email` + `senha` para `POST /auth/login` e recebe um
+   `token_desafio` curto.
+2. **Etapa 2** envia o `codigo` (TOTP) junto com o `token_desafio` para
+   `POST /auth/2fa/verificar` e recebe o `access_token`, que e salvo no
+   `localStorage` com a chave `access_token` para as chamadas autenticadas
+   seguintes.
+
+Os endpoints `/auth/*` dependem do banco: **sem um SQL Server configurado eles
+respondem HTTP 503**. Sem um provedor de SMS real, o codigo 2FA e capturado pelo
+stub em memoria (`StubSMSSender`) e aparece nos **logs do servidor** da API.
+
+### O que funciona sem banco e o que exige o seu SQL Server
+
+Funciona **sem** configurar banco algum:
+
+- `GET /health` (health check da aplicacao).
+- `GET /health/db` (diagnostico de conectividade: retorna 503 ate o banco ser
+  configurado).
+- `POST /recomendacao/orcamento` e os demais endpoints `/recomendacao/*` (AIV
+  deterministico, sem banco).
+
+Exige o **seu proprio SQL Server** configurado (ate la os endpoints respondem
+HTTP 503):
+
+- Catalogo de pacotes (RF3).
+- Vendas (RF5).
+- Estatisticas (RF10).
+- Persistencia de usuarios e login/2FA (RF1/RF2).
 
 ## Testes
 
