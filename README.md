@@ -112,10 +112,12 @@ sqlcmd -S localhost -U sa -P 'SuaSenha' -i sql/04_programmability.sql
 sqlcmd -S localhost -U sa -P 'SuaSenha' -i sql/05_seed_dml.sql
 ```
 
-A descricao completa de todas as tabelas e colunas esta no
+Os scripts usam `CREATE` direto (sem guardas de "se nao existir"), em estilo
+amigavel ao VS Code / Azure Data Studio / SSMS; rode-os em um banco limpo e na
+ordem acima. A descricao completa de todas as tabelas e colunas esta no
 [dicionario de dados](docs/dicionario_de_dados.md). Notas de execucao
-adicionais (traducao MySQL -> T-SQL, regra de multiplos caminhos de cascade)
-estao em [`sql/README.md`](sql/README.md).
+adicionais (INSERT sem lista de colunas com IDENTITY, regra de multiplos
+caminhos de cascade) estao em [`sql/README.md`](sql/README.md).
 
 ## Configurar e rodar o back-end
 

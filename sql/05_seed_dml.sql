@@ -1,163 +1,124 @@
-/* =====================================================================
-   Wanderlust Viagens - Camada de banco de dados (SQL Server / T-SQL)
-   Script 05 - Seed (dados de exemplo) + consultas CRUD representativas
-   ---------------------------------------------------------------------
-   Popula todas as entidades com dados de exemplo e demonstra consultas
-   CRUD (secao 5.4). Observacoes:
-     - As senhas sao apenas placeholders de HASH (nunca texto puro).
-     - IDs de IDENTITY sao recuperados via SCOPE_IDENTITY para manter o
-       script robusto independentemente dos valores gerados.
-   Pre-requisito: executar 01 a 04 antes deste script.
-   ===================================================================== */
+-- =====================================================================
+-- Wanderlust Viagens - Banco de dados (SQL Server / T-SQL)
+-- Script 05 - Dados de exemplo + consultas CRUD representativas
+-- ---------------------------------------------------------------------
+-- Popula as entidades e demonstra consultas. As senhas sao apenas
+-- placeholders de HASH (nunca texto puro).
+-- Os INSERT sem lista de colunas comecam na PRIMEIRA coluna que nao e
+-- IDENTITY (a PK auto-incremento e gerada pelo banco e nao recebe valor).
+-- Como as insercoes rodam de cima para baixo, os ids gerados sao
+-- deterministicos (1, 2, 3...), entao as FKs usam esses valores literais.
+-- Pre-requisito: executar 01 a 04 antes deste script.
+-- =====================================================================
 
 USE agencia_viagens;
 GO
 
-/* ---------------------------------------------------------------------
-   1) Destinos
-   --------------------------------------------------------------------- */
-INSERT INTO dbo.Destino (cidade, estado, pais, categoria, descricao) VALUES
-    (N'Rio de Janeiro', N'RJ', N'Brasil',    N'Praia',    N'Praias famosas e Pao de Acucar.'),
-    (N'Gramado',        N'RS', N'Brasil',    N'Serra',    N'Clima europeu na serra gaucha.'),
-    (N'Paris',          N'IDF',N'Franca',    N'Cultural', N'Museus, gastronomia e arquitetura.');
-GO
+-- 1) Destinos  -> ids 1, 2, 3
+INSERT INTO Destino VALUES
+    (N'Rio de Janeiro', N'RJ', N'Brasil',  N'Praia',    N'Praias famosas e Pao de Acucar.'),
+    (N'Gramado',        N'RS', N'Brasil',  N'Serra',    N'Clima europeu na serra gaucha.'),
+    (N'Paris',          N'IDF',N'Franca',  N'Cultural', N'Museus, gastronomia e arquitetura.');
 
-/* ---------------------------------------------------------------------
-   2) Usuarios (um turista e um colaborador) + Credenciais
-   --------------------------------------------------------------------- */
-DECLARE @id_turista_user INT;
-DECLARE @id_colab_user   INT;
+-- 2) Usuarios  -> id 1 (turista), id 2 (colaborador)
+INSERT INTO Usuario VALUES
+    (N'Ana Beatriz Souza', NULL, N'ela/dela', '1995-04-12', N'111.222.333-44', N'22000-000', N'ana.souza@example.com', N'+5521999990000', N'Turista'),
+    (N'Carlos Mendes', N'Carla Mendes', N'ela/dela', '1988-09-30', N'555.666.777-88', N'01000-000', N'carla.mendes@example.com', N'+5511988887777', N'Agente');
 
-INSERT INTO dbo.Usuario (nome, nome_social, pronome, data_nascimento, cpf, cep, email, telefone, papel)
-VALUES (N'Ana Beatriz Souza', NULL, N'ela/dela', '1995-04-12', N'111.222.333-44', N'22000-000',
-        N'ana.souza@example.com', N'+5521999990000', N'Turista');
-SET @id_turista_user = CAST(SCOPE_IDENTITY() AS INT);
+-- Especializacoes: usam os ids de Usuario gerados acima (1 turista, 2 colaborador).
+INSERT INTO Conta_turista VALUES (1);
+INSERT INTO Conta_colaborador VALUES (2, N'Agente de Viagens', 5.50);
 
-INSERT INTO dbo.Usuario (nome, nome_social, pronome, data_nascimento, cpf, cep, email, telefone, papel)
-VALUES (N'Carlos Mendes', N'Carla Mendes', N'ela/dela', '1988-09-30', N'555.666.777-88', N'01000-000',
-        N'carla.mendes@example.com', N'+5511988887777', N'Agente');
-SET @id_colab_user = CAST(SCOPE_IDENTITY() AS INT);
+-- Credenciais (lista de colunas explicita para deixar atualizado_em no DEFAULT).
+INSERT INTO Credencial (id_usuario, senha_hash, totp_secret, two_factor) VALUES
+    (1, N'$2b$12$exemplodehashficticioparaanabsouza......', NULL, 0),
+    (2, N'$2b$12$exemplodehashficticioparacarlamendes....', N'JBSWY3DPEHPK3PXP', 1);
 
--- Especializacoes:
-INSERT INTO dbo.Conta_turista (id_turista) VALUES (@id_turista_user);
-INSERT INTO dbo.Conta_colaborador (id_colaborador, cargo, comissao)
-VALUES (@id_colab_user, N'Agente de Viagens', 5.50);
-
--- Credenciais (hashes de exemplo; valores ficticios):
-INSERT INTO dbo.Credencial (id_usuario, senha_hash, totp_secret, two_factor)
-VALUES
-    (@id_turista_user, N'$2b$12$exemplodehashficticioparaanabsouza......', NULL, 0),
-    (@id_colab_user,   N'$2b$12$exemplodehashficticioparacarlamendes....', N'JBSWY3DPEHPK3PXP', 1);
-GO
-
-/* ---------------------------------------------------------------------
-   3) Pacotes (com extensoes tipo_viagem/nivel)
-   --------------------------------------------------------------------- */
-INSERT INTO dbo.Pacote (preco_base, data_inicio, data_fim, estoque, tipo_viagem, nivel) VALUES
+-- 3) Pacotes  -> ids 1, 2, 3
+INSERT INTO Pacote VALUES
     (2500.00, '2025-12-20', '2025-12-27', 10, N'Praia',    N'Conforto'),
     (1800.00, '2025-07-10', '2025-07-15', 5,  N'Serra',    N'Economico'),
     (9800.00, '2026-05-01', '2026-05-12', 8,  N'Cultural', N'Luxo');
+
+-- 4) Viagens (destinos 1,2,3)  -> ids 1, 2, 3
+INSERT INTO Viagem VALUES
+    ('2025-12-20T08:00:00', '2025-12-20T10:00:00', N'Aviao',  N'2h',  1),
+    ('2025-07-10T07:00:00', '2025-07-10T13:00:00', N'Onibus', N'6h',  2),
+    ('2026-05-01T22:00:00', '2026-05-02T13:00:00', N'Aviao',  N'11h', 3);
+
+-- 5) Hospedagens (pacotes 1,2,3)  -> ids 1, 2, 3
+INSERT INTO Hospedagem VALUES
+    (N'22010-000', N'Av. Atlantica',       1500, N'Hotel Copa Mar',  N'Duplo',    N'Meia pensao',     1),
+    (N'95670-000', N'Rua das Hortensias',   200, N'Pousada Serrana', N'Standard', N'Cafe da manha',   2),
+    (N'75001',     N'Rue de Rivoli',         10, N'Hotel Louvre',    N'Suite',    N'Pensao completa', 3);
+
+-- 6) Preferencia e respostas do questionario do turista 1.
+-- Preferencia usa lista de colunas explicita (atualizado_em fica no DEFAULT).
+INSERT INTO Preferencia (fk_turista, tipo_viagem, nivel, orcamento_max, estacao_preferida, observacoes)
+VALUES (1, N'Praia', N'Conforto', 3000.00, N'Verao', N'Prefere destinos com praia e vida noturna.');
+
+INSERT INTO Questionario_Resposta (fk_turista, pergunta, resposta) VALUES
+    (1, N'Qual o seu tipo de viagem preferido?', N'Praia'),
+    (1, N'Qual o seu nivel de conforto desejado?', N'Conforto'),
+    (1, N'Qual o seu orcamento maximo?', N'3000');
 GO
 
-/* ---------------------------------------------------------------------
-   4) Viagens (vinculadas a destinos) e Hospedagens (vinculadas a pacotes)
-   --------------------------------------------------------------------- */
-INSERT INTO dbo.Viagem (data_partida, data_chegada, meio_transporte, duracao, fk_Destino_id_destino) VALUES
-    ('2025-12-20T08:00:00', '2025-12-20T10:00:00', N'Aviao', N'2h',  1),
-    ('2025-07-10T07:00:00', '2025-07-10T13:00:00', N'Onibus',N'6h',  2),
-    ('2026-05-01T22:00:00', '2026-05-02T13:00:00', N'Aviao', N'11h', 3);
-GO
-
-INSERT INTO dbo.Hospedagem (cep, rua, numero, nome, tipo_quarto, regime_alimentacao, fk_Pacote_id_pacote) VALUES
-    (N'22010-000', N'Av. Atlantica',   1500, N'Hotel Copa Mar',   N'Duplo',       N'Meia pensao',   1),
-    (N'95670-000', N'Rua das Hortensias', 200, N'Pousada Serrana', N'Standard',    N'Cafe da manha', 2),
-    (N'75001',     N'Rue de Rivoli',     10, N'Hotel Louvre',     N'Suite',       N'Pensao completa', 3);
-GO
-
-/* ---------------------------------------------------------------------
-   5) Preferencias e respostas do questionario (AIV)
-   --------------------------------------------------------------------- */
-DECLARE @turista INT = (SELECT TOP 1 id_turista FROM dbo.Conta_turista ORDER BY id_turista);
-
-INSERT INTO dbo.Preferencia (fk_turista, tipo_viagem, nivel, orcamento_max, estacao_preferida, observacoes)
-VALUES (@turista, N'Praia', N'Conforto', 3000.00, N'Verao', N'Prefere destinos com praia e vida noturna.');
-
-INSERT INTO dbo.Questionario_Resposta (fk_turista, pergunta, resposta) VALUES
-    (@turista, N'Qual o seu tipo de viagem preferido?', N'Praia'),
-    (@turista, N'Qual o seu nivel de conforto desejado?', N'Conforto'),
-    (@turista, N'Qual o seu orcamento maximo?', N'3000');
-GO
-
-/* ---------------------------------------------------------------------
-   6) Uma venda completa usando a procedure (Venda + Obtem + baixa estoque)
-   --------------------------------------------------------------------- */
-DECLARE @turista2   INT = (SELECT TOP 1 id_turista FROM dbo.Conta_turista ORDER BY id_turista);
-DECLARE @colab      INT = (SELECT TOP 1 id_colaborador FROM dbo.Conta_colaborador ORDER BY id_colaborador);
-DECLARE @pacote1    INT = (SELECT TOP 1 id_pacote FROM dbo.Pacote ORDER BY id_pacote);
+-- 7) Uma venda completa via procedure (Venda + Obtem + baixa de estoque).
+-- turista 1, colaborador 2, pacote 1 -> gera a Venda de id 1.
 DECLARE @nova_venda INT;
-
-EXEC dbo.sp_registrar_venda
-    @fk_conta_turista     = @turista2,
-    @fk_pacote            = @pacote1,
-    @forma_pagamento      = N'credito',  -- valor do enum FormaPagamento (CK_Venda_forma_pagamento)
-    @fk_conta_colaborador = @colab,
+EXEC sp_registrar_venda
+    @fk_conta_turista     = 1,
+    @fk_pacote            = 1,
+    @forma_pagamento      = N'credito',
+    @fk_conta_colaborador = 2,
     @status_pagamento     = N'Pago',
     @id_venda_out         = @nova_venda OUTPUT;
 
--- Emissao de uma passagem para a venda recem-criada:
-DECLARE @viagem1 INT = (SELECT TOP 1 id_viagem FROM dbo.Viagem ORDER BY id_viagem);
-INSERT INTO dbo.Passagem (numero_assento, classe, fk_id_viagem, fk_id_venda)
-VALUES (N'12A', N'Economica', @viagem1, @nova_venda);
+-- Emissao de uma passagem para a venda recem-criada (viagem 1).
+INSERT INTO Passagem VALUES (N'12A', N'Economica', 1, @nova_venda);
 GO
 
-/* ---------------------------------------------------------------------
-   7) Avaliacao (dispara a trigger que atualiza IA_Feedback)
-   --------------------------------------------------------------------- */
-DECLARE @turista3 INT = (SELECT TOP 1 id_turista FROM dbo.Conta_turista ORDER BY id_turista);
-DECLARE @pacote2  INT = (SELECT TOP 1 id_pacote FROM dbo.Pacote ORDER BY id_pacote);
-
-INSERT INTO dbo.Avaliacao (fk_turista, fk_pacote, nota, comentario)
-VALUES (@turista3, @pacote2, 5, N'Experiencia excelente, recomendo!');
+-- 8) Avaliacao do turista 1 para o pacote 2 (dispara a trigger do IA_Feedback).
+-- Lista de colunas explicita (data fica no DEFAULT).
+INSERT INTO Avaliacao (fk_turista, fk_pacote, nota, comentario)
+VALUES (1, 2, 5, N'Experiencia excelente, recomendo!');
 GO
 
-/* =====================================================================
-   CONSULTAS CRUD REPRESENTATIVAS (secao 5.4)
-   ---------------------------------------------------------------------
-   Exemplos executaveis de leitura, atualizacao e remocao.
-   ===================================================================== */
+-- =====================================================================
+-- CONSULTAS CRUD REPRESENTATIVAS
+-- =====================================================================
 
--- READ (RF3): busca de pacotes por tipo de viagem, nivel e orcamento,
--- apenas com estoque disponivel.
+-- READ (RF3): busca de pacotes por tipo, nivel e orcamento, com estoque.
 SELECT p.id_pacote, p.tipo_viagem, p.nivel, p.preco_base, p.data_inicio, p.estoque
-FROM dbo.Pacote AS p
+FROM Pacote p
 WHERE p.tipo_viagem = N'Praia'
   AND p.nivel = N'Conforto'
   AND p.preco_base <= 3000.00
   AND p.estoque > 0
 ORDER BY p.data_inicio;
-GO
 
 -- READ: vendas detalhadas (view consolidada).
-SELECT * FROM dbo.vw_vendas_detalhadas ORDER BY data_venda DESC;
-GO
+SELECT * FROM vw_vendas_detalhadas ORDER BY data_venda DESC;
 
 -- READ (RF10): incidencia de turistas por destino e ano.
-SELECT * FROM dbo.vw_turistas_por_destino_ano ORDER BY ano DESC, qtd_turistas DESC;
-GO
+SELECT * FROM vw_turistas_por_destino_ano ORDER BY ano DESC, qtd_turistas DESC;
 
 -- READ: score agregado do AIV por pacote.
 SELECT f.fk_pacote, f.score_agregado, f.total_avaliacoes, f.data_atualizacao
-FROM dbo.IA_Feedback AS f
+FROM IA_Feedback f
 ORDER BY f.score_agregado DESC;
-GO
 
--- UPDATE: atualizar o status de pagamento de uma venda.
-UPDATE dbo.Venda
+-- READ: idade do turista 1 usando a function.
+SELECT u.nome, dbo.fn_calcular_idade(u.data_nascimento) AS idade
+FROM Usuario u
+WHERE u.id_passageiro = 1;
+
+-- UPDATE: atualizar o status de pagamento da venda 1.
+UPDATE Venda
 SET status_pagamento = N'Pago'
-WHERE id_venda = (SELECT TOP 1 id_venda FROM dbo.Venda ORDER BY id_venda);
-GO
+WHERE id_venda = 1;
 
--- DELETE (exemplo): remover uma resposta de questionario especifica.
-DELETE FROM dbo.Questionario_Resposta
+-- DELETE: remover uma resposta de questionario especifica.
+DELETE FROM Questionario_Resposta
 WHERE pergunta = N'Qual o seu orcamento maximo?';
 GO

@@ -54,7 +54,7 @@ Dados sensíveis de autenticação, isolados do perfil (boa prática LGPD/RNF3).
 
 | Coluna        | Tipo          | Nulo | Chave   | Descrição                                            |
 |---------------|---------------|------|---------|------------------------------------------------------|
-| id_usuario    | INT           | Não  | PK, FK  | FK para `Usuario(id_passageiro)` (ON DELETE CASCADE).|
+| id_usuario    | INT           | Não  | PK, FK  | FK para `Usuario(id_passageiro)` (ON DELETE NO ACTION).|
 | senha_hash    | NVARCHAR(255) | Não  |         | Hash da senha (ex.: bcrypt/argon2). Nunca texto puro.|
 | totp_secret   | NVARCHAR(64)  | Sim  |         | Segredo TOTP para 2FA.                               |
 | two_factor    | BIT           | Não  |         | Indica se 2FA está habilitado (padrão 0).            |
@@ -82,7 +82,7 @@ Pacotes de viagem comercializados.
 
 | Coluna         | Tipo         | Nulo | Chave   | Descrição                                                   |
 |----------------|--------------|------|---------|-------------------------------------------------------------|
-| id_colaborador | INT          | Não  | PK, FK  | FK para `Usuario(id_passageiro)` (ON DELETE CASCADE).       |
+| id_colaborador | INT          | Não  | PK, FK  | FK para `Usuario(id_passageiro)` (ON DELETE NO ACTION).     |
 | cargo          | NVARCHAR(50) | Não  |         | Cargo do colaborador.                                       |
 | comissao       | DECIMAL(5,2) | Sim  |         | Percentual de comissão.                                     |
 
@@ -92,7 +92,7 @@ Pacotes de viagem comercializados.
 
 | Coluna     | Tipo | Nulo | Chave  | Descrição                                               |
 |------------|------|------|--------|---------------------------------------------------------|
-| id_turista | INT  | Não  | PK, FK | FK para `Usuario(id_passageiro)` (ON DELETE CASCADE).   |
+| id_turista | INT  | Não  | PK, FK | FK para `Usuario(id_passageiro)` (ON DELETE NO ACTION). |
 
 ---
 
@@ -124,7 +124,7 @@ Hospedagem vinculada a um pacote.
 | nome                | NVARCHAR(100) | Não  |       | Nome do estabelecimento.                       |
 | tipo_quarto         | NVARCHAR(50)  | Sim  |       | Tipo de quarto.                                |
 | regime_alimentacao  | NVARCHAR(50)  | Sim  |       | Regime de alimentação (ex.: Meia pensão).      |
-| fk_Pacote_id_pacote | INT           | Não  | FK    | FK para `Pacote(id_pacote)` (ON DELETE CASCADE).|
+| fk_Pacote_id_pacote | INT           | Não  | FK    | FK para `Pacote(id_pacote)` (NO ACTION).        |
 
 ---
 
@@ -142,8 +142,12 @@ Registro de uma venda realizada.
 | fk_conta_turista     | INT           | Não  | FK    | FK para `Conta_turista(id_turista)` — **NO ACTION** (ver nota).  |
 | fk_conta_colaborador | INT           | Sim  | FK    | FK para `Conta_colaborador(id_colaborador)` — **NO ACTION**.     |
 
-> **Nota de cascade**: as duas FKs usam `ON DELETE NO ACTION` para evitar
-> múltiplos caminhos de cascade até `Usuario` (erro 1785 do SQL Server).
+> **Nota de cascade**: todas as FKs do modelo usam `ON DELETE NO ACTION`
+> (padrão). Em `Venda`, isso é obrigatório porque ela referencia tanto
+> `Conta_turista` quanto `Conta_colaborador`; se ambas cascateassem,
+> haveria múltiplos caminhos de cascade até `Usuario` (erro 1785 do
+> SQL Server). Para apagar dados relacionados, remova antes as linhas
+> dependentes.
 
 ---
 
@@ -184,7 +188,7 @@ Perfil de preferências do turista (consolidado do questionário inicial).
 | Coluna            | Tipo          | Nulo | Chave   | Descrição                                               |
 |-------------------|---------------|------|---------|---------------------------------------------------------|
 | id_preferencia    | INT IDENTITY  | Não  | PK      | Identificador (auto-incremento).                        |
-| fk_turista        | INT           | Não  | FK, UQ  | FK para `Conta_turista(id_turista)` (CASCADE). Única.   |
+| fk_turista        | INT           | Não  | FK, UQ  | FK para `Conta_turista(id_turista)` (NO ACTION). Única. |
 | tipo_viagem       | NVARCHAR(50)  | Sim  |         | Tipo preferido (casa com `Pacote.tipo_viagem`).         |
 | nivel             | NVARCHAR(50)  | Sim  |         | Nível preferido (casa com `Pacote.nivel`).              |
 | orcamento_max     | DECIMAL(10,2) | Sim  |         | Teto de orçamento desejado.                             |
@@ -201,7 +205,7 @@ Respostas brutas do questionário inicial (rastreabilidade do AIV).
 | Coluna        | Tipo          | Nulo | Chave | Descrição                                            |
 |---------------|---------------|------|-------|------------------------------------------------------|
 | id_resposta   | INT IDENTITY  | Não  | PK    | Identificador (auto-incremento).                     |
-| fk_turista    | INT           | Não  | FK    | FK para `Conta_turista(id_turista)` (CASCADE).       |
+| fk_turista    | INT           | Não  | FK    | FK para `Conta_turista(id_turista)` (NO ACTION).     |
 | pergunta      | NVARCHAR(200) | Não  |       | Texto da pergunta.                                   |
 | resposta      | NVARCHAR(MAX) | Não  |       | Resposta fornecida.                                  |
 | respondido_em | DATETIME2     | Não  |       | Data/hora da resposta.                               |
@@ -233,7 +237,7 @@ Feedback agregado pelo AIV por pacote (RF8). Atualizada por trigger.
 | Coluna           | Tipo          | Nulo | Chave  | Descrição                                            |
 |------------------|---------------|------|--------|------------------------------------------------------|
 | id_feedback      | INT IDENTITY  | Não  | PK     | Identificador (auto-incremento).                     |
-| fk_pacote        | INT           | Não  | FK, UQ | FK para `Pacote(id_pacote)` (CASCADE). Único.        |
+| fk_pacote        | INT           | Não  | FK, UQ | FK para `Pacote(id_pacote)` (NO ACTION). Único.      |
 | score_agregado   | DECIMAL(4,2)  | Sim  |        | Score agregado (0.00 a 5.00).                        |
 | total_avaliacoes | INT           | Não  |        | Total de avaliações consideradas (padrão 0).         |
 | resumo           | NVARCHAR(MAX) | Sim  |        | Síntese textual gerada pelo AIV.                     |
