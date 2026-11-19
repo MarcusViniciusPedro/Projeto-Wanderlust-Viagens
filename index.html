@@ -17,7 +17,7 @@
 
     <header>
         <nav class="navbar navbar-expand-md navbar-dark bg-light fixed-top">
-            <a href="" class="navbar-brand">
+            <a href="index.html" class="navbar-brand">
                   <h1 class="display-5 text-secondary m-0">
                     <img src="imgs/icon.png" class="img-fluid logo-icon" alt="Wonderlust Viagens - Icon">   Wonderlust</h1>
                   </a>
@@ -30,7 +30,7 @@
                     <a href="pages/pacotes.html" class="nav-item nav-link">Pacotes</a>
                     <a href="pages/login.html" class="nav-item nav-link">Login</a>
                     <a href="pages/cadastro.html" class="nav-item nav-link">Cadastre-se</a>
-                    <a href="pages/carrinho.html" class="nav-item nav-link">Cadastre-se</a>
+                    <a href="pages/carrinho.html" class="nav-item nav-link">Carrinho</a>
                 </div>
                 <button class="btn btn-primary btn-md-square border-secondary mb-3 mb-md-3 mb-lg-0 me-3"
                     data-bs-toggle="modal" data-bs-target="#searchModal"><i class="fas fa-search"></i></button>
@@ -39,7 +39,8 @@
             </div>
         </nav>
 
-        <div class="container-fluid nav-bar p-0" <nav class="menu navbar navbar-expand-lg" aria-label="Menu principal"
+        <div class="container-fluid nav-bar p-0">
+            <nav class="menu navbar navbar-expand-lg" aria-label="Menu principal"
             data-bs-theme="dark">
             <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#menu-nav"
                 aria-controls="menu-nav" aria-expanded="false" aria-label="Abrir menu">
@@ -48,7 +49,7 @@
 
             <div class="collapse navbar-collapse" id="menu-nav">
                 <ul class="menu-lista navbar-nav">
-                    <li><a href="home.html">Home</a></li>
+                    <li><a href="index.html">Home</a></li>
                     <li><a href="pages/pacotes.html">Pacotes</a></li>
                     <li><a href="pages/login.html">login</a></li>
                     <li><a href="pages/cadastro.html">Cadastre-se</a></li>
@@ -61,6 +62,9 @@
 
     <main>
         <h2>DESCUBRA A SUA PRÓXIMA VIAGEM!</h2>
+
+        <!-- Indicador de status da API (usa o endpoint GET /health, sem banco) -->
+        <p id="api-status" class="api-status" aria-live="polite">Verificando API...</p>
 
     </main>
 
@@ -105,5 +109,25 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        // Demonstracao front<->back sem banco: consulta GET /health e exibe o status.
+        (function () {
+            "use strict";
+            var alvo = document.getElementById("api-status");
+            if (!alvo) {
+                return;
+            }
+            apiFetch("/health")
+                .then(function (dados) {
+                    alvo.textContent = "API online";
+                    alvo.classList.add("api-status-online");
+                })
+                .catch(function () {
+                    alvo.textContent = "API offline";
+                    alvo.classList.add("api-status-offline");
+                });
+        })();
+    </script>
 
 </body>
