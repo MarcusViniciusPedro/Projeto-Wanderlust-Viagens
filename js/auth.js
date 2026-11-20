@@ -158,6 +158,10 @@ function inicializarLogin() {
       const resposta = await verificar2fa(tokenDesafio, codigo);
       localStorage.setItem("access_token", resposta.access_token);
       if (resposta.papel) localStorage.setItem("papel", resposta.papel);
+      // id do turista logado, usado como fk_conta_turista ao registrar a venda.
+      if (resposta.id_passageiro != null) {
+        localStorage.setItem("id_turista", String(resposta.id_passageiro));
+      }
 
       mostrarFeedback(feedback, "Login concluído! Redirecionando...", "ok");
       setTimeout(() => {
