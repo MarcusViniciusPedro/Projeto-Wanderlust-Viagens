@@ -46,13 +46,17 @@
             <section class="busca" aria-label="Filtrar pacotes">
                 <form class="busca-barra" id="form-filtro">
                     <div class="busca-campo">
-                        <span class="busca-icone" aria-hidden="true"></span>
+                        <span class="busca-icone" aria-hidden="true">
+                            <img src="../imgs/data_icon.svg" class="busca-icone-img">
+                        </span>
                         <label for="filtro-data-inicio" class="busca-label">Data de início</label>
                         <input type="date" id="filtro-data-inicio" name="data_inicio" class="busca-input">
                     </div>
 
                     <div class="busca-campo">
-                        <span class="busca-icone" aria-hidden="true"></span>
+                        <span class="busca-icone" aria-hidden="true">
+                            <img src="../imgs/destino_icon.svg" class="busca-icone-img">
+                        </span>
                         <label for="filtro-estado" class="busca-label">Destino</label>
                         <select id="filtro-estado" name="estado" class="busca-input">
                             <option value="" selected>Todos</option>
@@ -60,7 +64,9 @@
                     </div>
 
                     <div class="busca-campo">
-                        <span class="busca-icone" aria-hidden="true"></span>
+                        <span class="busca-icone" aria-hidden="true">
+                            <img src="../imgs/tipo_viagem_icon.svg" class="busca-icone-img">
+                        </span>
                         <label for="filtro-tipo" class="busca-label">Tipo de viagem</label>
                         <select id="filtro-tipo" name="tipo_viagem" class="busca-input">
                             <option value="" selected>Todos</option>
@@ -71,7 +77,9 @@
                     </div>
 
                     <div class="busca-campo busca-campo-valor">
-                        <span class="busca-icone" aria-hidden="true"></span>
+                        <span class="busca-icone" aria-hidden="true">
+                            <img src="../imgs/preco_icon.svg" class="busca-icone-img">
+                        </span>
                         <label for="filtro-valor" class="busca-label">
                             Valor até <output id="filtro-valor-saida" for="filtro-valor">R$ 50.000,00</output>
                         </label>
@@ -123,5 +131,6 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script src="../js/pacotes-dados.js"></script>
         <script src="../js/pacotes.js"></script>
+        <script src="../js/admin-link.js"></script>
     </body>
 </html>

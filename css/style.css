@@ -171,8 +171,11 @@
     height: 1.25rem;
     margin-bottom: 0.25rem;
     display: inline-block;
-    background-color: #e3e9f0;
     border-radius: 4px;
+}
+
+.busca-icone-img {
+    max-height: 100%;
 }
 
 .busca-label {
@@ -229,7 +232,6 @@
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
-    /* espaço reservado para a imagem do mascote */
 }
 
 .recomendacao-form {
@@ -486,6 +488,47 @@
     font-weight: 600;
     background-color: #e9eef5;
     color: #0d3b66;
+}
+
+/* painel do administrador */
+
+.admin-main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.admin-secao {
+    margin-bottom: 2.5rem;
+}
+
+.admin-form {
+    background-color: #f6f8fb;
+    border-radius: 10px;
+    padding: 1.25rem;
+}
+
+.admin-bloqueio {
+    text-align: center;
+    padding: 4rem 1rem;
+}
+
+.admin-cadeado {
+    width: 72px;
+    height: 72px;
+    opacity: 0.6;
+    margin-bottom: 1rem;
+}
+
+/* link de admin (cadeado) no menu — some para quem não é admin */
+.admin-link-cadeado {
+    display: inline-flex;
+    align-items: center;
+}
+
+.admin-link-cadeado img {
+    width: 1.2em;
+    height: 1.2em;
 }
 
 /* rodapé */
