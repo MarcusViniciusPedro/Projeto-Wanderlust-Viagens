@@ -272,9 +272,11 @@ respondem HTTP 503.
 .venv/bin/pytest -q
 ```
 
-A suite tem **148 testes** cobrindo a logica de negocio (orcamento,
+A suite tem **170 testes** cobrindo a logica de negocio (orcamento,
 recomendacao, agregacao de feedback, autenticacao/2FA, autorizacao por papel,
 camada de authz HTTP, CRUD do Administrador (catalogo/viagens/contas),
+CRUD de Hospedagem e leituras do catalogo (pacote unico e lista de destinos),
+guarda anti-lockout da moderacao de contas,
 self-service do Cliente (conta e compras proprias),
 AIV personalizado por turista e manutencao das proprias preferencias/avaliacoes,
 maquina de estados de pagamento, busca, e-mail, estatisticas, configuracao,
@@ -368,6 +370,11 @@ grupo:
 | `GET /catalogo/destinos/{id_destino}`           | Gerenciar Catalogo | `gerenciar_catalogo`  |
 | `PUT /catalogo/destinos/{id_destino}`           | Gerenciar Catalogo | `gerenciar_catalogo`  |
 | `DELETE /catalogo/destinos/{id_destino}`        | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `POST /catalogo/hospedagens`                    | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `GET /catalogo/hospedagens`                     | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `GET /catalogo/hospedagens/{id_hospedagem}`     | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `PUT /catalogo/hospedagens/{id_hospedagem}`     | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `DELETE /catalogo/hospedagens/{id_hospedagem}`  | Gerenciar Catalogo | `gerenciar_catalogo`  |
 | `POST /catalogo/viagens`                        | Agendar Viagem     | `agendar`             |
 | `GET /catalogo/viagens`                         | Agendar Viagem     | `agendar`             |
 | `DELETE /catalogo/viagens/{id_viagem}`          | Agendar Viagem     | `agendar`             |
@@ -375,9 +382,27 @@ grupo:
 | `PATCH /auth/admin/contas/{id_passageiro}/status` | Gerenciar Contas | `gerenciar_contas`    |
 | `DELETE /auth/admin/contas/{id_passageiro}`     | Gerenciar Contas   | `gerenciar_contas`    |
 
-As rotas `GET /catalogo/pacotes` (RF3) e `GET /catalogo/destinos/{id}/streetview`
-(RF9) continuam **publicas** (sem gate). As rotas DB-backed respondem **503**
-sem SQL Server configurado e **404** para id inexistente.
+A listagem `GET /catalogo/hospedagens` aceita o filtro opcional `?fk_pacote=`
+para trazer so as hospedagens de um pacote.
+
+As **leituras publicas** do catalogo (sem gate, coerentes entre si): `GET
+/catalogo/pacotes` (busca, RF3), `GET /catalogo/pacotes/{id_pacote}` (um
+pacote), `GET /catalogo/destinos` (lista de destinos) e `GET
+/catalogo/destinos/{id}/streetview` (RF9). As leituras `GET
+/catalogo/pacotes/{id_pacote}` e `GET /catalogo/destinos` foram adicionadas
+para fechar o **R** do CRUD de Pacote/Destino de forma simetrica. As rotas
+DB-backed respondem **503** sem SQL Server configurado e **404** para id
+inexistente.
+
+**Guarda anti-lockout (Gerenciar Contas).** A decisao fica em uma funcao pura
+testavel, `app/usuarios/service.py:avaliar_guarda_moderacao` (o router carrega
+papel/status do alvo e a contagem de admins ativos via
+`repository.contar_admins_ativos` e delega a decisao). Ela protege o `PATCH
+/auth/admin/contas/{id}/status` (quando o novo status banir/denunciar) e o
+`DELETE /auth/admin/contas/{id}` contra dois erros irreversiveis: (a) um admin
+banir/excluir a **propria** conta (**403**, comparando o id do path com o `id`
+do JWT) e (b) banir/excluir o **ultimo administrador ativo** (**409**).
+Reativar (status `Ativo`) nunca e bloqueado.
 
 **Gerenciar Contas e LGPD/RNF3.** O admin modera contas mas **nao le nem edita
 dados pessoais**: as respostas (`ContaAdminSaida`) trazem apenas

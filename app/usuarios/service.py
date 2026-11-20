@@ -23,10 +23,12 @@ fator obrigatorio.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Callable, Optional
 
 from app.core.authz import Papel
 from app.core.config import Settings, get_settings
+from app.usuarios.schemas import StatusConta
 from app.core.security import (
     Desafio2FAInvalidoError,
     criar_token_acesso,
@@ -47,6 +49,9 @@ __all__ = [
     "ResultadoLogin",
     "iniciar_login",
     "concluir_login",
+    "AcaoModeracao",
+    "ResultadoGuardaModeracao",
+    "avaliar_guarda_moderacao",
 ]
 
 
@@ -175,3 +180,110 @@ def concluir_login(
         settings=settings,
         id_usuario=credencial.id_usuario,
     )
+
+
+# ---------------------------------------------------------------------------
+# Guarda anti-lockout da moderacao de contas (Gerenciar Contas, secao 4.1).
+# Regra de decisao PURA e testavel sem banco: o router carrega os dados
+# (papel/status da conta alvo e contagem de admins ativos) e delega a decisao
+# aqui. Protege contra dois erros operacionais irreversiveis: o admin se
+# auto-banir/auto-excluir e a remocao do ULTIMO administrador ativo (que
+# deixaria o sistema sem ninguem capaz de moderar/gerenciar o catalogo).
+# ---------------------------------------------------------------------------
+
+
+class AcaoModeracao(str, Enum):
+    """Acao de moderacao a ser avaliada pela guarda anti-lockout."""
+
+    BANIR = "banir"
+    EXCLUIR = "excluir"
+    REATIVAR = "reativar"
+
+
+@dataclass(frozen=True)
+class ResultadoGuardaModeracao:
+    """Decisao da guarda anti-lockout.
+
+    ``permitido`` indica se a operacao pode seguir. Quando negada, ``motivo``
+    traz a mensagem em Portugues e ``codigo_http`` o status HTTP sugerido ao
+    router (403 para auto-alvo, 409 para o ultimo admin ativo).
+    """
+
+    permitido: bool
+    motivo: Optional[str] = None
+    codigo_http: Optional[int] = None
+
+
+def _acao_remove_admin(
+    acao: AcaoModeracao, novo_status: "Optional[StatusConta]"
+) -> bool:
+    """Diz se a acao tira um administrador do estado ativo (banir/excluir).
+
+    Reativar (REATIVAR, ou alteracao de status para 'Ativo') nunca remove.
+    Banir/denunciar e excluir removem o admin do estado ativo.
+    """
+    if acao == AcaoModeracao.REATIVAR:
+        return False
+    if novo_status is not None and novo_status == StatusConta.ATIVO:
+        return False
+    return acao in (AcaoModeracao.BANIR, AcaoModeracao.EXCLUIR)
+
+
+def avaliar_guarda_moderacao(
+    *,
+    id_alvo: int,
+    id_admin_atual: int,
+    papel_alvo: Papel,
+    acao: AcaoModeracao,
+    admins_ativos: int,
+    novo_status: "Optional[StatusConta]" = None,
+) -> ResultadoGuardaModeracao:
+    """Decide se uma acao de moderacao pode seguir (guarda anti-lockout).
+
+    Parametros:
+      id_alvo: id da conta sobre a qual a acao recai (vindo do path).
+      id_admin_atual: id do administrador autenticado (vindo do JWT).
+      papel_alvo: papel atual da conta alvo.
+      acao: banir/excluir/reativar que esta sendo tentada.
+      admins_ativos: numero de administradores com status 'Ativo' no banco.
+      novo_status: para a alteracao de status, o status pretendido (usado para
+        distinguir reativacao de banimento/denuncia).
+
+    Regras (todas negam a operacao com mensagem clara):
+      (a) o admin NAO pode banir/excluir/rebaixar a PROPRIA conta (403): evita
+          que alguem se tranque para fora por engano.
+      (b) o ULTIMO administrador ativo NAO pode ser banido/excluido (409): o
+          sistema ficaria sem ninguem para moderar contas e gerenciar o
+          catalogo. Reativar nunca e bloqueado.
+
+    Reativar a propria conta ou a de outro admin e sempre permitido.
+    """
+    remove = _acao_remove_admin(acao, novo_status)
+
+    # Reativacao (ou qualquer acao que mantem o admin ativo) e sempre liberada.
+    if not remove:
+        return ResultadoGuardaModeracao(permitido=True)
+
+    # (a) auto-alvo: o admin tentando banir/excluir a propria conta.
+    if id_alvo == id_admin_atual:
+        return ResultadoGuardaModeracao(
+            permitido=False,
+            motivo=(
+                "Um administrador nao pode banir ou excluir a propria conta. "
+                "Peca a outro administrador para realizar esta operacao."
+            ),
+            codigo_http=403,
+        )
+
+    # (b) ultimo admin ativo: nao permitir remover o unico admin restante.
+    if papel_alvo == Papel.ADMINISTRADOR and admins_ativos <= 1:
+        return ResultadoGuardaModeracao(
+            permitido=False,
+            motivo=(
+                "Nao e possivel banir ou excluir o ultimo administrador ativo. "
+                "Promova ou ative outro administrador antes de continuar."
+            ),
+            codigo_http=409,
+        )
+
+    return ResultadoGuardaModeracao(permitido=True)

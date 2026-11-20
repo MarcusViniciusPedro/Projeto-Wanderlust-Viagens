@@ -13,6 +13,8 @@ from typing import List, Optional
 from app.catalogo.schemas import (
     DestinoCriar,
     DestinoSaida,
+    HospedagemCriar,
+    HospedagemSaida,
     PacoteCriar,
     PacoteSaida,
     ViagemCriar,
@@ -298,6 +300,35 @@ def buscar_destino_completo(
     )
 
 
+def listar_destinos(settings: Optional[Settings] = None) -> List[DestinoSaida]:
+    """Lista todos os destinos do catalogo (leitura completa de Destino)."""
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id_destino, cidade, estado, pais, categoria, descricao
+            FROM dbo.Destino
+            ORDER BY id_destino
+            """
+        )
+        linhas = cursor.fetchall()
+    finally:
+        conn.close()
+
+    return [
+        DestinoSaida(
+            id_destino=linha[0],
+            cidade=linha[1],
+            estado=linha[2],
+            pais=linha[3],
+            categoria=linha[4],
+            descricao=linha[5],
+        )
+        for linha in linhas
+    ]
+
+
 def atualizar_destino(
     id_destino: int, dados: DestinoCriar, settings: Optional[Settings] = None
 ) -> Optional[DestinoSaida]:
@@ -439,6 +470,185 @@ def excluir_viagem(id_viagem: int, settings: Optional[Settings] = None) -> bool:
         cursor.execute(
             "DELETE FROM dbo.Viagem WHERE id_viagem = %s",
             (id_viagem,),
+        )
+        afetadas = cursor.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+
+    return afetadas > 0
+
+
+# ---------------------------------------------------------------------------
+# Gerenciar Catalogo (admin, secao 4.1): CRUD de Hospedagem (dbo.Hospedagem).
+# ---------------------------------------------------------------------------
+
+
+def criar_hospedagem(
+    dados: HospedagemCriar, settings: Optional[Settings] = None
+) -> HospedagemSaida:
+    """Insere uma hospedagem e retorna a representacao com o id gerado."""
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO dbo.Hospedagem
+                (cep, rua, numero, nome, tipo_quarto, regime_alimentacao,
+                 fk_Pacote_id_pacote)
+            OUTPUT INSERTED.id_hospedagem
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                dados.cep,
+                dados.rua,
+                dados.numero,
+                dados.nome,
+                dados.tipo_quarto,
+                dados.regime_alimentacao,
+                dados.fk_Pacote_id_pacote,
+            ),
+        )
+        id_hospedagem = cursor.fetchone()[0]
+        conn.commit()
+    finally:
+        conn.close()
+
+    return HospedagemSaida(id_hospedagem=id_hospedagem, **dados.model_dump())
+
+
+def listar_hospedagens(
+    fk_pacote: Optional[int] = None, settings: Optional[Settings] = None
+) -> List[HospedagemSaida]:
+    """Lista hospedagens, opcionalmente filtrando por pacote (fk_pacote)."""
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        if fk_pacote is None:
+            cursor.execute(
+                """
+                SELECT id_hospedagem, cep, rua, numero, nome, tipo_quarto,
+                       regime_alimentacao, fk_Pacote_id_pacote
+                FROM dbo.Hospedagem
+                ORDER BY id_hospedagem
+                """
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT id_hospedagem, cep, rua, numero, nome, tipo_quarto,
+                       regime_alimentacao, fk_Pacote_id_pacote
+                FROM dbo.Hospedagem
+                WHERE fk_Pacote_id_pacote = %s
+                ORDER BY id_hospedagem
+                """,
+                (fk_pacote,),
+            )
+        linhas = cursor.fetchall()
+    finally:
+        conn.close()
+
+    return [
+        HospedagemSaida(
+            id_hospedagem=linha[0],
+            cep=linha[1],
+            rua=linha[2],
+            numero=linha[3],
+            nome=linha[4],
+            tipo_quarto=linha[5],
+            regime_alimentacao=linha[6],
+            fk_Pacote_id_pacote=linha[7],
+        )
+        for linha in linhas
+    ]
+
+
+def buscar_hospedagem(
+    id_hospedagem: int, settings: Optional[Settings] = None
+) -> Optional[HospedagemSaida]:
+    """Carrega uma hospedagem pelo id (ou None se nao existir)."""
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id_hospedagem, cep, rua, numero, nome, tipo_quarto,
+                   regime_alimentacao, fk_Pacote_id_pacote
+            FROM dbo.Hospedagem
+            WHERE id_hospedagem = %s
+            """,
+            (id_hospedagem,),
+        )
+        linha = cursor.fetchone()
+    finally:
+        conn.close()
+
+    if linha is None:
+        return None
+    return HospedagemSaida(
+        id_hospedagem=linha[0],
+        cep=linha[1],
+        rua=linha[2],
+        numero=linha[3],
+        nome=linha[4],
+        tipo_quarto=linha[5],
+        regime_alimentacao=linha[6],
+        fk_Pacote_id_pacote=linha[7],
+    )
+
+
+def atualizar_hospedagem(
+    id_hospedagem: int,
+    dados: HospedagemCriar,
+    settings: Optional[Settings] = None,
+) -> Optional[HospedagemSaida]:
+    """Atualiza uma hospedagem existente. Retorna a atualizada ou None."""
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE dbo.Hospedagem
+            SET cep = %s,
+                rua = %s,
+                numero = %s,
+                nome = %s,
+                tipo_quarto = %s,
+                regime_alimentacao = %s,
+                fk_Pacote_id_pacote = %s
+            WHERE id_hospedagem = %s
+            """,
+            (
+                dados.cep,
+                dados.rua,
+                dados.numero,
+                dados.nome,
+                dados.tipo_quarto,
+                dados.regime_alimentacao,
+                dados.fk_Pacote_id_pacote,
+                id_hospedagem,
+            ),
+        )
+        afetadas = cursor.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+
+    if afetadas == 0:
+        return None
+    return HospedagemSaida(id_hospedagem=id_hospedagem, **dados.model_dump())
+
+
+def excluir_hospedagem(
+    id_hospedagem: int, settings: Optional[Settings] = None
+) -> bool:
+    """Remove uma hospedagem pelo id. Retorna True se removeu alguma linha."""
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM dbo.Hospedagem WHERE id_hospedagem = %s",
+            (id_hospedagem,),
         )
         afetadas = cursor.rowcount
         conn.commit()

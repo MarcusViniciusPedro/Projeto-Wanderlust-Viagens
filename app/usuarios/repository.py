@@ -310,6 +310,29 @@ def buscar_conta(
     )
 
 
+def contar_admins_ativos(settings: Optional[Settings] = None) -> int:
+    """Conta administradores com status 'Ativo' (guarda anti-lockout).
+
+    Usado para impedir que o ultimo administrador ativo seja banido/excluido.
+    """
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM dbo.Usuario
+            WHERE papel = %s AND status = %s
+            """,
+            (Papel.ADMINISTRADOR.value, StatusConta.ATIVO.value),
+        )
+        linha = cursor.fetchone()
+    finally:
+        conn.close()
+
+    return int(linha[0]) if linha else 0
+
+
 def alterar_status_conta(
     id_passageiro: int,
     novo_status: StatusConta,

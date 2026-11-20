@@ -112,6 +112,13 @@ class FakeUsuariosRepo:
     def buscar_conta(self, id_passageiro, settings=None):
         return self.contas.get(id_passageiro)
 
+    def contar_admins_ativos(self, settings=None):
+        return sum(
+            1
+            for c in self.contas.values()
+            if c.papel == Papel.ADMINISTRADOR and c.status == StatusConta.ATIVO
+        )
+
     def alterar_status_conta(self, id_passageiro, novo_status, settings=None):
         conta = self.contas.get(id_passageiro)
         if conta is None:
@@ -188,6 +195,7 @@ def fake_usuarios(monkeypatch: pytest.MonkeyPatch) -> FakeUsuariosRepo:
     for nome in (
         "listar_contas",
         "buscar_conta",
+        "contar_admins_ativos",
         "alterar_status_conta",
         "excluir_conta",
     ):
@@ -195,13 +203,15 @@ def fake_usuarios(monkeypatch: pytest.MonkeyPatch) -> FakeUsuariosRepo:
     return repo
 
 
-def _auth(papel: Papel) -> dict[str, str]:
-    token = criar_token_acesso(subject="u@ex.com", papel=papel.value, id_usuario=1)
+def _auth(papel: Papel, id_usuario: int = 1) -> dict[str, str]:
+    token = criar_token_acesso(
+        subject="u@ex.com", papel=papel.value, id_usuario=id_usuario
+    )
     return {"Authorization": f"Bearer {token}"}
 
 
-def _admin() -> dict[str, str]:
-    return _auth(Papel.ADMINISTRADOR)
+def _admin(id_usuario: int = 1) -> dict[str, str]:
+    return _auth(Papel.ADMINISTRADOR, id_usuario=id_usuario)
 
 
 _PACOTE_PAYLOAD = {
@@ -352,10 +362,12 @@ def test_admin_lista_contas_sem_dados_sensiveis(
 def test_admin_altera_status_conta(
     client: TestClient, fake_usuarios: FakeUsuariosRepo
 ):
+    # O admin ator (id 99) e distinto do alvo (id 1, Turista): a guarda
+    # anti-lockout nao bloqueia a moderacao de um terceiro.
     resp = client.patch(
         "/auth/admin/contas/1/status",
         json={"novo_status": "Banido", "motivo": "abuso"},
-        headers=_admin(),
+        headers=_admin(id_usuario=99),
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "Banido"
@@ -365,7 +377,7 @@ def test_admin_altera_status_conta(
 def test_admin_exclui_conta_soft_delete(
     client: TestClient, fake_usuarios: FakeUsuariosRepo
 ):
-    resp = client.delete("/auth/admin/contas/1", headers=_admin())
+    resp = client.delete("/auth/admin/contas/1", headers=_admin(id_usuario=99))
     assert resp.status_code == 200
     corpo = resp.json()
     assert corpo["status"] == "Banido"

@@ -21,6 +21,8 @@ from app.catalogo import repository
 from app.catalogo.schemas import (
     DestinoCriar,
     DestinoSaida,
+    HospedagemCriar,
+    HospedagemSaida,
     PacoteCriar,
     PacoteSaida,
     ResultadoBusca,
@@ -73,6 +75,39 @@ def buscar_pacotes(
         somente_disponiveis=somente_disponiveis,
     )
     return ResultadoBusca(total=len(filtrados), pacotes=filtrados)
+
+
+@router.get("/pacotes/{id_pacote}", response_model=PacoteSaida)
+def obter_pacote(id_pacote: int) -> PacoteSaida:
+    """Carrega um pacote unico pelo id (leitura publica do catalogo, RF3).
+
+    Fecha o R do CRUD de Pacote: assim como GET /catalogo/pacotes lista e e
+    publico, esta leitura por id tambem permanece publica (sem gate).
+    """
+    try:
+        pacote = repository.buscar_pacote(id_pacote)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if pacote is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Pacote nao encontrado."
+        )
+    return pacote
+
+
+@router.get("/destinos", response_model=List[DestinoSaida])
+def listar_destinos() -> List[DestinoSaida]:
+    """Lista os destinos do catalogo (leitura publica, RF3/RF9).
+
+    Fecha o R do CRUD de Destino: a leitura por id completa (ja existente,
+    gated) e a listagem publica aqui compoem o read simetrico. Mantem a
+    convencao dos demais GET de catalogo, que sao publicos.
+    """
+    try:
+        return repository.listar_destinos()
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
 
 
 @router.get("/destinos/{id_destino}/streetview", response_model=StreetViewSaida)
@@ -274,4 +309,101 @@ def excluir_viagem(id_viagem: int) -> None:
     if not removido:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Viagem nao encontrada."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Gerenciar Catalogo (Administrador, secao 4.1): CRUD de Hospedagem.
+# Todas as rotas exigem a permissao GERENCIAR_CATALOGO (403 para quem nao tem;
+# 401 sem token). 404 para id inexistente; 503 sem banco.
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/hospedagens",
+    response_model=HospedagemSaida,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def criar_hospedagem(dados: HospedagemCriar) -> HospedagemSaida:
+    """Cria uma hospedagem vinculada a um pacote (Gerenciar Catalogo, 4.1)."""
+    try:
+        return repository.criar_hospedagem(dados)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+
+@router.get(
+    "/hospedagens",
+    response_model=List[HospedagemSaida],
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def listar_hospedagens(
+    fk_pacote: Optional[int] = Query(default=None),
+) -> List[HospedagemSaida]:
+    """Lista hospedagens, opcionalmente filtrando por pacote (Gerenciar, 4.1)."""
+    try:
+        return repository.listar_hospedagens(fk_pacote)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+
+@router.get(
+    "/hospedagens/{id_hospedagem}",
+    response_model=HospedagemSaida,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def obter_hospedagem(id_hospedagem: int) -> HospedagemSaida:
+    """Carrega uma hospedagem pelo id (Gerenciar Catalogo, secao 4.1)."""
+    try:
+        hospedagem = repository.buscar_hospedagem(id_hospedagem)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if hospedagem is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Hospedagem nao encontrada.",
+        )
+    return hospedagem
+
+
+@router.put(
+    "/hospedagens/{id_hospedagem}",
+    response_model=HospedagemSaida,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def atualizar_hospedagem(
+    id_hospedagem: int, dados: HospedagemCriar
+) -> HospedagemSaida:
+    """Atualiza uma hospedagem existente (Gerenciar Catalogo, secao 4.1)."""
+    try:
+        atualizada = repository.atualizar_hospedagem(id_hospedagem, dados)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if atualizada is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Hospedagem nao encontrada.",
+        )
+    return atualizada
+
+
+@router.delete(
+    "/hospedagens/{id_hospedagem}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def excluir_hospedagem(id_hospedagem: int) -> None:
+    """Remove uma hospedagem do catalogo (Gerenciar Catalogo, secao 4.1)."""
+    try:
+        removido = repository.excluir_hospedagem(id_hospedagem)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if not removido:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Hospedagem nao encontrada.",
         )

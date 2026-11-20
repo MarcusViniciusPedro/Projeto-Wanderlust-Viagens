@@ -26,6 +26,7 @@ from app.usuarios.schemas import (
     ContaAdminSaida,
     LoginDesafioResposta,
     LoginRequest,
+    StatusConta,
     TokenResposta,
     UsuarioAtualizar,
     UsuarioCadastro,
@@ -33,9 +34,11 @@ from app.usuarios.schemas import (
     Verificar2FARequest,
 )
 from app.usuarios.service import (
+    AcaoModeracao,
     Codigo2FAInvalidoError,
     CredenciaisInvalidasError,
     Desafio2FAInvalidoError,
+    avaliar_guarda_moderacao,
     concluir_login,
     iniciar_login,
 )
@@ -245,19 +248,80 @@ def listar_contas() -> List[ContaAdminSaida]:
         raise _erro_db_indisponivel() from exc
 
 
+def _aplicar_guarda_moderacao(
+    id_alvo: int,
+    id_admin_atual: int,
+    acao: AcaoModeracao,
+    novo_status: StatusConta | None = None,
+) -> ContaAdminSaida:
+    """Carrega a conta alvo + contagem de admins e aplica a guarda anti-lockout.
+
+    Centraliza o fluxo compartilhado por PATCH status e DELETE: busca a conta
+    (404 se nao existir), conta os admins ativos e delega a decisao a funcao
+    pura ``avaliar_guarda_moderacao``. Levanta 403 (auto-alvo) ou 409 (ultimo
+    admin ativo) quando a operacao e negada. Retorna a conta alvo quando
+    permitida, para o chamador seguir com a operacao.
+    """
+    try:
+        alvo = repository.buscar_conta(id_alvo)
+        if alvo is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conta nao encontrada.",
+            )
+        admins_ativos = repository.contar_admins_ativos()
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    decisao = avaliar_guarda_moderacao(
+        id_alvo=id_alvo,
+        id_admin_atual=id_admin_atual,
+        papel_alvo=alvo.papel,
+        acao=acao,
+        admins_ativos=admins_ativos,
+        novo_status=novo_status,
+    )
+    if not decisao.permitido:
+        raise HTTPException(
+            status_code=decisao.codigo_http or status.HTTP_409_CONFLICT,
+            detail=decisao.motivo,
+        )
+    return alvo
+
+
 @router.patch(
     "/admin/contas/{id_passageiro}/status",
     response_model=ContaAdminSaida,
     dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CONTAS))],
 )
 def alterar_status_conta(
-    id_passageiro: int, dados: AlterarStatusContaRequest
+    id_passageiro: int,
+    dados: AlterarStatusContaRequest,
+    usuario_atual: UsuarioAtual = Depends(requer_autenticacao),
 ) -> ContaAdminSaida:
     """Altera o status de uma conta: banir/denunciar/reativar (secao 4.1).
 
     Reativar e enviar ``novo_status = Ativo``. O ``motivo`` e opcional e serve
     para registro operacional; nao expoe nem altera dados pessoais da conta.
+
+    Guarda anti-lockout: quando o novo status remove o admin do estado ativo
+    (banir/denunciar), um admin nao pode moderar a PROPRIA conta (403) e o
+    ultimo administrador ativo nao pode ser banido/denunciado (409). Reativar
+    (Ativo) nunca e bloqueado.
     """
+    id_admin = _id_do_token(usuario_atual)
+    acao = (
+        AcaoModeracao.REATIVAR
+        if dados.novo_status == StatusConta.ATIVO
+        else AcaoModeracao.BANIR
+    )
+    _aplicar_guarda_moderacao(
+        id_alvo=id_passageiro,
+        id_admin_atual=id_admin,
+        acao=acao,
+        novo_status=dados.novo_status,
+    )
+
     try:
         conta = repository.alterar_status_conta(id_passageiro, dados.novo_status)
     except DatabaseNotConfiguredError as exc:
@@ -275,7 +339,10 @@ def alterar_status_conta(
     response_model=ContaAdminSaida,
     dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CONTAS))],
 )
-def excluir_conta(id_passageiro: int) -> ContaAdminSaida:
+def excluir_conta(
+    id_passageiro: int,
+    usuario_atual: UsuarioAtual = Depends(requer_autenticacao),
+) -> ContaAdminSaida:
     """Apaga uma conta via SOFT DELETE/anonimizacao (Gerenciar Contas, 4.1).
 
     Escolha de projeto (documentada tambem no repository e nas FEAT findings):
@@ -284,7 +351,17 @@ def excluir_conta(id_passageiro: int) -> ContaAdminSaida:
     Por isso a conta e marcada como 'Banido' e tem os campos pessoais
     anonimizados, preservando a integridade das vendas e alinhando-se a LGPD.
     Retorna a visao (sem dados pessoais) da conta anonimizada.
+
+    Guarda anti-lockout: um admin nao pode excluir a PROPRIA conta (403) e o
+    ultimo administrador ativo nao pode ser excluido (409).
     """
+    id_admin = _id_do_token(usuario_atual)
+    _aplicar_guarda_moderacao(
+        id_alvo=id_passageiro,
+        id_admin_atual=id_admin,
+        acao=AcaoModeracao.EXCLUIR,
+    )
+
     try:
         conta = repository.excluir_conta(id_passageiro)
     except DatabaseNotConfiguredError as exc:

@@ -135,3 +135,38 @@ class ViagemSaida(BaseModel):
     meio_transporte: str
     duracao: Optional[str] = None
     fk_Destino_id_destino: int
+
+
+# ---------------------------------------------------------------------------
+# Gerenciar Catalogo (admin, secao 4.1): CRUD de Hospedagem.
+# Os campos espelham exatamente as colunas de dbo.Hospedagem.
+# ---------------------------------------------------------------------------
+
+
+class HospedagemCriar(BaseModel):
+    """Dados de entrada para criar uma hospedagem (Gerenciar Catalogo, 4.1)."""
+
+    cep: str = Field(min_length=1, max_length=9)
+    rua: str = Field(min_length=1, max_length=150)
+    numero: int = Field(gt=0)
+    nome: str = Field(min_length=1, max_length=100)
+    tipo_quarto: Optional[str] = Field(default=None, max_length=50)
+    regime_alimentacao: Optional[str] = Field(default=None, max_length=50)
+    fk_Pacote_id_pacote: int
+
+
+class HospedagemAtualizar(HospedagemCriar):
+    """Dados de entrada para atualizar uma hospedagem (substituicao completa)."""
+
+
+class HospedagemSaida(BaseModel):
+    """Representacao de uma hospedagem do catalogo (dbo.Hospedagem)."""
+
+    id_hospedagem: int
+    cep: str
+    rua: str
+    numero: int
+    nome: str
+    tipo_quarto: Optional[str] = None
+    regime_alimentacao: Optional[str] = None
+    fk_Pacote_id_pacote: int
