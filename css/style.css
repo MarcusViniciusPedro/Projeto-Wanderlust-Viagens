@@ -210,6 +210,75 @@
     padding: 2rem 1rem;
 }
 
+/* home: recomendação (mascote à esquerda, formulário à direita) */
+
+.recomendacao {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    max-width: 1000px;
+    margin: 3rem auto;
+    padding: 0 1rem;
+    align-items: stretch;
+}
+
+.recomendacao-mascote {
+    flex: 1 1 50%;
+    min-height: 320px;
+    background-color: #e3e9f0;
+    border-radius: 12px;
+    /* espaço reservado para as imagens do mascote */
+}
+
+.recomendacao-form {
+    flex: 1 1 45%;
+}
+
+.recomendacao-form h2 {
+    color: #0d3b66;
+    margin-bottom: 0.25rem;
+}
+
+.recomendacao-form > p {
+    color: #5b6b7d;
+    margin-bottom: 1.25rem;
+}
+
+.recomendacao-lista {
+    margin-top: 1.25rem;
+    padding-left: 1.25rem;
+}
+
+.recomendacao-lista li {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #e3e9f0;
+}
+
+.rec-selo {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    margin-left: 0.25rem;
+}
+
+.rec-ok { background-color: #e7f6ec; color: #1d6a38; }
+.rec-fora { background-color: #fdecea; color: #a4291e; }
+
+.rec-score {
+    display: block;
+    font-size: 0.8rem;
+    color: #5b6b7d;
+}
+
+@media (max-width: 768px) {
+    .recomendacao-mascote,
+    .recomendacao-form {
+        flex: 1 1 100%;
+    }
+}
+
 /* página de pacotes: grade de cards */
 
 .pacotes-main {
