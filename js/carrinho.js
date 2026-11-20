@@ -133,11 +133,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const detalheEl = document.getElementById("orcamento-detalhe");
   const valorEl = document.getElementById("orcamento-valor");
 
+  const btnRevisar = document.getElementById("btn-revisar");
+  const revisarFeedback = document.getElementById("revisar-feedback");
+  const pagamentoSecao = document.getElementById("pagamento-secao");
+  const resumoPedido = document.getElementById("resumo-pedido");
+
   const formConfirmar = document.getElementById("form-confirmar");
   const confirmarFeedback = document.getElementById("confirmar-feedback");
   const btnConfirmar = document.getElementById("btn-confirmar");
 
   let totalCalculado = null; // valor oficial vindo do back
+  let pedidoAtual = null; // dados do pedido (datas, pessoas, regime, nível)
 
   form.addEventListener("submit", async (evento) => {
     evento.preventDefault();
@@ -185,9 +191,13 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const resposta = await estimarOrcamento(dados);
       totalCalculado = resposta.total_estimado;
+      pedidoAtual = { inicioIso, fimIso, dias, regime, nivel, pessoas, alta };
       montarDetalhe(detalheEl, { preco_base: pacote.preco_base, dias, regime, nivel, alta, pessoas });
       valorEl.textContent = formatarMoeda(totalCalculado);
       resultado.hidden = false;
+      // Recalcular esconde o passo de pagamento até revisar de novo.
+      pagamentoSecao.hidden = true;
+      revisarFeedback.hidden = true;
       confirmarFeedback.hidden = true;
     } catch (erro) {
       mostrarFeedback(feedback, erro.message || "Não foi possível calcular o orçamento.", "erro");
@@ -196,25 +206,47 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  formConfirmar.addEventListener("submit", async (evento) => {
-    evento.preventDefault();
-
-    // Precisa ter um orçamento calculado antes.
+  // Passo 1: revisar e confirmar — exige login antes de mostrar o pagamento.
+  btnRevisar.addEventListener("click", () => {
     if (totalCalculado == null) {
-      mostrarFeedback(confirmarFeedback, "Calcule o orçamento antes de confirmar.", "erro");
+      mostrarFeedback(revisarFeedback, "Calcule o orçamento antes de confirmar.", "erro");
       return;
     }
-
-    // Exige login.
     if (!estaLogado()) {
       mostrarFeedback(
-        confirmarFeedback,
-        "Você precisa entrar na sua conta para concluir a compra.",
+        revisarFeedback,
+        "Você precisa entrar na sua conta para concluir a compra. Redirecionando...",
         "erro"
       );
       setTimeout(() => {
         window.location.href = "login.html";
       }, 1500);
+      return;
+    }
+
+    // Logado: monta o resumo do pedido e revela as opções de pagamento.
+    resumoPedido.innerHTML = [
+      ["Destino", `${pacote.cidade} - ${pacote.estado}`],
+      ["Período escolhido", `${pedidoAtual.inicioIso} a ${pedidoAtual.fimIso} (${pedidoAtual.dias} dia(s))`],
+      ["Pessoas", pedidoAtual.pessoas],
+      ["Regime", ROTULO_REGIME[pedidoAtual.regime]],
+      ["Nível", ROTULO_NIVEL[pedidoAtual.nivel]],
+      ["Total", formatarMoeda(totalCalculado)],
+    ]
+      .map(([t, v]) => `<div class="resumo-linha"><dt>${t}</dt><dd>${v}</dd></div>`)
+      .join("");
+
+    revisarFeedback.hidden = true;
+    pagamentoSecao.hidden = false;
+    pagamentoSecao.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+
+  // Passo 2: finalizar — o login já foi exigido no passo "Revisar".
+  formConfirmar.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+
+    if (totalCalculado == null) {
+      mostrarFeedback(confirmarFeedback, "Calcule o orçamento antes de confirmar.", "erro");
       return;
     }
 
