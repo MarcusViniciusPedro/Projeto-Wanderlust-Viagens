@@ -1,0 +1,12 @@
+# Ambiente Python / back-end (não pertence ao branch de front-end)
+.venv/
+app/
+tests/
+sql/
+docs/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+.agents/
+*.pyc
+.env

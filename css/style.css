@@ -214,24 +214,26 @@
 
 .recomendacao {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 2rem;
     max-width: 1000px;
-    margin: 3rem auto;
+    margin: 2rem auto;
     padding: 0 1rem;
-    align-items: stretch;
+    align-items: center;
 }
 
 .recomendacao-mascote {
-    flex: 1 1 50%;
-    min-height: 320px;
-    background-color: #e3e9f0;
+    flex: 0 0 500px;
+    align-self: flex-start;
     border-radius: 12px;
-    /* espaço reservado para as imagens do mascote */
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    /* espaço reservado para a imagem do mascote */
 }
 
 .recomendacao-form {
-    flex: 1 1 45%;
+    flex: 1 1 auto;
 }
 
 .recomendacao-form h2 {
@@ -273,9 +275,15 @@
 }
 
 @media (max-width: 768px) {
+    .recomendacao {
+        flex-wrap: wrap;
+    }
     .recomendacao-mascote,
     .recomendacao-form {
         flex: 1 1 100%;
+    }
+    .recomendacao-mascote {
+        min-height: 240px;
     }
 }
 
