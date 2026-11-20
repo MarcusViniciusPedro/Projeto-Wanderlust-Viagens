@@ -147,6 +147,85 @@ BEGIN
 END;
 GO
 
+-- sp_atualizar_usuario: atualiza os campos editaveis do PROPRIO perfil
+-- (self-service, RF "Alterar os dados de cadastro"). A atualizacao parcial e
+-- a lista branca de colunas editaveis (nome, nome_social, pronome, cep, email,
+-- telefone) ficam em Python (app/usuarios/repository.py), que carrega o perfil
+-- atual para preencher as colunas nao enviadas antes de chamar esta procedure.
+-- Assim a defesa em profundidade (RNF3: papel/status/cpf/data_nascimento NAO
+-- sao editaveis) permanece no Python e o UPDATE fica no banco. A procedure faz
+-- um UPDATE completo das seis colunas e devolve @@ROWCOUNT (linhas afetadas)
+-- como unico resultado, pois sob SET NOCOUNT ON o rowcount do driver pymssql
+-- nao e confiavel.
+CREATE PROCEDURE sp_atualizar_usuario
+    @id_passageiro INT,
+    @nome          NVARCHAR(150),
+    @nome_social   NVARCHAR(150) = NULL,
+    @pronome       NVARCHAR(30)  = NULL,
+    @cep           NVARCHAR(9)   = NULL,
+    @email         NVARCHAR(254) = NULL,
+    @telefone      NVARCHAR(20)  = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.Usuario
+    SET nome        = @nome,
+        nome_social = @nome_social,
+        pronome     = @pronome,
+        cep         = @cep,
+        email       = @email,
+        telefone    = @telefone
+    WHERE id_passageiro = @id_passageiro;
+
+    SELECT @@ROWCOUNT;  -- linhas afetadas, lidas via fetchone()[0] no Python
+END;
+GO
+
+-- sp_excluir_usuario: SOFT DELETE / anonimizacao de uma conta (LGPD/RNF3).
+-- Compartilhada pelo self-service (DELETE /auth/me) e pela exclusao
+-- administrativa (DELETE /auth/admin/contas/{id}), que tem a MESMA semantica.
+-- NAO e um hard delete: as FKs de dbo.Venda para Conta_turista usam
+-- ON DELETE NO ACTION, entao apagar um Usuario com vendas violaria as FKs e
+-- destruiria o historico financeiro. Em vez disso a conta vira 'Banido'
+-- (estado terminal) e os campos pessoais sao anonimizados. Devolve @@ROWCOUNT
+-- (linhas afetadas) como unico resultado.
+CREATE PROCEDURE sp_excluir_usuario
+    @id_passageiro INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.Usuario
+    SET status      = N'Banido',
+        nome        = N'Conta removida',
+        nome_social = NULL,
+        pronome     = NULL,
+        email       = NULL,
+        telefone    = NULL,
+        cep         = NULL,
+        cpf         = CONCAT('removido-', @id_passageiro)
+    WHERE id_passageiro = @id_passageiro;
+
+    SELECT @@ROWCOUNT;  -- linhas afetadas, lidas via fetchone()[0] no Python
+END;
+GO
+
+-- sp_listar_usuarios: lista contas para moderacao (RF "Consultar todos os
+-- usuarios cadastrados"). Projeta SOMENTE campos nao sensiveis (RNF3/LGPD):
+-- id_passageiro, nome, email, papel, status. cpf, senha, data de nascimento,
+-- cep e telefone NUNCA sao retornados aqui.
+CREATE PROCEDURE sp_listar_usuarios
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT id_passageiro, nome, email, papel, status
+    FROM dbo.Usuario
+    ORDER BY id_passageiro;
+END;
+GO
+
 -- tr_avaliacao_atualiza_ia_feedback: apos mudancas em Avaliacao,
 -- recalcula score_agregado e total_avaliacoes em IA_Feedback (upsert).
 CREATE TRIGGER tr_avaliacao_atualiza_ia_feedback

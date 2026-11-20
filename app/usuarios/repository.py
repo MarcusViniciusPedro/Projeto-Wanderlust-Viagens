@@ -147,6 +147,41 @@ def buscar_usuario_por_id(
     )
 
 
+def _carregar_perfil_editavel(
+    id_passageiro: int, settings: Optional[Settings] = None
+) -> Optional[dict]:
+    """Le as seis colunas editaveis atuais (inclui ``cep``, que ``UsuarioSaida``
+    nao expoe) para que o UPDATE COMPLETO de sp_atualizar_usuario preserve os
+    valores das colunas nao enviadas numa atualizacao parcial. Retorna ``None``
+    quando o id nao existe.
+    """
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT nome, nome_social, pronome, cep, email, telefone
+            FROM dbo.Usuario
+            WHERE id_passageiro = %s
+            """,
+            (id_passageiro,),
+        )
+        linha = cursor.fetchone()
+    finally:
+        conn.close()
+
+    if linha is None:
+        return None
+    return {
+        "nome": linha[0],
+        "nome_social": linha[1],
+        "pronome": linha[2],
+        "cep": linha[3],
+        "email": linha[4],
+        "telefone": linha[5],
+    }
+
+
 def atualizar_usuario(
     id_passageiro: int,
     dados: UsuarioAtualizar,
@@ -174,22 +209,48 @@ def atualizar_usuario(
         "email",
         "telefone",
     }
-    pares = [(c, v) for c, v in atualizacoes.items() if c in _COLUNAS_EDITAVEIS]
+    pares = {c: v for c, v in atualizacoes.items() if c in _COLUNAS_EDITAVEIS}
     if not pares:
         return buscar_usuario_por_id(id_passageiro, settings)
 
-    set_clause = ", ".join(f"{coluna} = %s" for coluna, _ in pares)
-    valores = [valor for _, valor in pares]
-    valores.append(id_passageiro)
+    # A escrita vive na procedure dbo.sp_atualizar_usuario, que faz um UPDATE
+    # COMPLETO das seis colunas editaveis. Como a atualizacao aqui e PARCIAL,
+    # carregamos o perfil atual para preencher as colunas nao enviadas antes do
+    # EXEC. A lista branca (defense-in-depth, RNF3) continua no Python; o banco
+    # so recebe os valores ja decididos.
+    atual = _carregar_perfil_editavel(id_passageiro, settings)
+    if atual is None:
+        return None
+
+    valores = (
+        id_passageiro,
+        pares.get("nome", atual["nome"]),
+        pares.get("nome_social", atual["nome_social"]),
+        pares.get("pronome", atual["pronome"]),
+        pares.get("cep", atual["cep"]),
+        pares.get("email", atual["email"]),
+        pares.get("telefone", atual["telefone"]),
+    )
 
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
         cursor.execute(
-            f"UPDATE dbo.Usuario SET {set_clause} WHERE id_passageiro = %s",
-            tuple(valores),
+            """
+            EXEC dbo.sp_atualizar_usuario
+                @id_passageiro=%s,
+                @nome=%s,
+                @nome_social=%s,
+                @pronome=%s,
+                @cep=%s,
+                @email=%s,
+                @telefone=%s
+            """,
+            valores,
         )
-        afetadas = cursor.rowcount
+        # Sob SET NOCOUNT ON o cursor.rowcount nao e confiavel: a procedure
+        # devolve SELECT @@ROWCOUNT como ultima instrucao.
+        afetadas = cursor.fetchone()[0]
         conn.commit()
     finally:
         conn.close()
@@ -214,27 +275,9 @@ def excluir_usuario(
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE dbo.Usuario
-            SET status = %s,
-                nome = %s,
-                nome_social = NULL,
-                pronome = NULL,
-                email = NULL,
-                telefone = NULL,
-                cep = NULL,
-                cpf = %s
-            WHERE id_passageiro = %s
-            """,
-            (
-                StatusConta.BANIDO.value,
-                "Conta removida",
-                f"removido-{id_passageiro}",
-                id_passageiro,
-            ),
-        )
-        afetadas = cursor.rowcount
+        cursor.execute("EXEC dbo.sp_excluir_usuario %s", (id_passageiro,))
+        # Procedure sob SET NOCOUNT ON devolve SELECT @@ROWCOUNT; leia dai.
+        afetadas = cursor.fetchone()[0]
         conn.commit()
     finally:
         conn.close()
@@ -257,13 +300,7 @@ def listar_contas(settings: Optional[Settings] = None) -> List[ContaAdminSaida]:
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id_passageiro, nome, email, papel, status
-            FROM dbo.Usuario
-            ORDER BY id_passageiro
-            """
-        )
+        cursor.execute("EXEC dbo.sp_listar_usuarios")
         linhas = cursor.fetchall()
     finally:
         conn.close()
@@ -379,27 +416,10 @@ def excluir_conta(
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE dbo.Usuario
-            SET status = %s,
-                nome = %s,
-                nome_social = NULL,
-                pronome = NULL,
-                email = NULL,
-                telefone = NULL,
-                cep = NULL,
-                cpf = %s
-            WHERE id_passageiro = %s
-            """,
-            (
-                StatusConta.BANIDO.value,
-                "Conta removida",
-                f"removido-{id_passageiro}",
-                id_passageiro,
-            ),
-        )
-        afetadas = cursor.rowcount
+        # Mesma procedure do self-service: a semantica de soft delete e identica.
+        cursor.execute("EXEC dbo.sp_excluir_usuario %s", (id_passageiro,))
+        # Procedure sob SET NOCOUNT ON devolve SELECT @@ROWCOUNT; leia dai.
+        afetadas = cursor.fetchone()[0]
         conn.commit()
     finally:
         conn.close()
