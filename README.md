@@ -63,7 +63,7 @@ Escolhas tecnologicas:
 │   ├── usuarios/             # perfis e autenticacao 2FA (RF1/RF2)
 │   ├── catalogo/             # busca de pacotes (RF3) + Street View (RF9)
 │   ├── vendas/               # carrinho/venda e maquina de pagamento (RF5)
-│   ├── recomendacao/         # AIV: orcamento (RF4) e recomendacao (RF7)
+│   ├── recomendacao/         # AIV: orcamento (RF4), recomendacao personalizada (RF7) e feedback (RF8)
 │   ├── estatisticas/         # turistas por destino (RF10)
 │   └── integracoes/          # stubs: sms.py, email.py, pagamento.py, streetview.py
 ├── sql/                      # camada de banco (SQL Server / T-SQL)
@@ -233,8 +233,9 @@ Funciona **sem** configurar banco algum:
 - `GET /health` (health check da aplicacao).
 - `GET /health/db` (diagnostico de conectividade: retorna 503 ate o banco ser
   configurado).
-- `POST /recomendacao/orcamento` e os demais endpoints `/recomendacao/*` (AIV
-  deterministico, sem banco).
+- `POST /recomendacao/orcamento`, `POST /recomendacao/ranking` e
+  `POST /recomendacao/feedback` (AIV deterministico sobre dados do corpo da
+  requisicao, sem banco).
 
 Exige o **seu proprio SQL Server** configurado (ate la os endpoints respondem
 HTTP 503):
@@ -243,6 +244,27 @@ HTTP 503):
 - Vendas (RF5).
 - Estatisticas (RF10).
 - Persistencia de usuarios e login/2FA (RF1/RF2).
+- AIV personalizado por turista e manutencao das preferencias/avaliacoes do
+  proprio turista (ver tabela abaixo).
+
+### Rotas DB-backed do AIV (personalizacao por turista, RF4/RF7/RF8)
+
+O AIV deixa de operar apenas sobre o corpo da requisicao e passa a **coletar**
+do banco os pacotes do catalogo (com a reputacao de `IA_Feedback`) e a
+`Preferencia` do turista logado, **personalizando** a recomendacao para ele e
+**reutilizando o mesmo service puro** (`recomendar`/`agregar_feedback`, sem
+duplicar a heuristica). O turista tambem mantem a propria `Preferencia` e envia
+as proprias `Avaliacao`, que sao os dados que o AIV usa para personalizar. O
+`fk_turista` vem SEMPRE do JWT, nunca do corpo/caminho. Sem banco, estas rotas
+respondem HTTP 503.
+
+| Metodo e rota                                   | Autenticacao          | Descricao                                                                 |
+|-------------------------------------------------|-----------------------|---------------------------------------------------------------------------|
+| `GET /recomendacao/para-mim`                    | Bearer JWT (turista)  | Ranking personalizado: coleta pacotes + reputacao + a Preferencia do token (RF7). |
+| `GET /recomendacao/preferencias/me`             | Bearer JWT (turista)  | Le a PROPRIA Preferencia do turista (404 se ainda nao gravou).            |
+| `PUT /recomendacao/preferencias/me`             | Bearer JWT (turista)  | Grava a PROPRIA Preferencia (upsert, pois `fk_turista` e UNIQUE).         |
+| `POST /recomendacao/avaliacoes`                 | Bearer JWT (turista)  | Envia a PROPRIA Avaliacao (409 se duplicada; UNIQUE fk_turista,fk_pacote). |
+| `GET /recomendacao/pacotes/{fk_pacote}/feedback`| Publica               | Agrega as Avaliacao persistidas via `agregar_feedback` (RF8).             |
 
 ## Testes
 
@@ -250,10 +272,11 @@ HTTP 503):
 .venv/bin/pytest -q
 ```
 
-A suite tem **134 testes** cobrindo a logica de negocio (orcamento,
+A suite tem **148 testes** cobrindo a logica de negocio (orcamento,
 recomendacao, agregacao de feedback, autenticacao/2FA, autorizacao por papel,
 camada de authz HTTP, CRUD do Administrador (catalogo/viagens/contas),
 self-service do Cliente (conta e compras proprias),
+AIV personalizado por turista e manutencao das proprias preferencias/avaliacoes,
 maquina de estados de pagamento, busca, e-mail, estatisticas, configuracao,
 CORS e diagnostico de conexao com o banco).
 Os testes unitarios **nao exigem um SQL Server vivo**.
