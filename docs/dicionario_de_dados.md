@@ -254,5 +254,12 @@ Feedback agregado pelo AIV por pacote (RF8). Atualizada por trigger.
 | `vw_vendas_detalhadas`                 | View       | Consolida Venda + turista + pacotes (via Obtem).                          |
 | `vw_turistas_por_destino_ano`          | View       | Incidência de turistas por destino e ano (suporte a RF10).               |
 | `sp_registrar_venda`                   | Procedure  | Registra Venda + Obtem e baixa estoque em transação atômica.             |
+| `sp_atualizar_usuario`                 | Procedure  | Atualiza os campos editáveis do próprio perfil (UPDATE + `@@ROWCOUNT`).  |
+| `sp_excluir_usuario`                   | Procedure  | Soft delete/anonimização de conta (LGPD/RNF3), retorna `@@ROWCOUNT`.     |
+| `sp_listar_usuarios`                   | Procedure  | Lista contas para moderação, sem campos pessoais sensíveis (RNF3).       |
+| `sp_criar_pacote`                      | Procedure  | Cadastra um pacote e retorna o id gerado (`SCOPE_IDENTITY`).             |
+| `sp_atualizar_pacote`                  | Procedure  | Altera um pacote existente (UPDATE completo), retorna `@@ROWCOUNT`.      |
+| `sp_excluir_pacote`                    | Procedure  | Remove um pacote (hard DELETE), retorna `@@ROWCOUNT`.                    |
+| `sp_listar_pacotes`                    | Procedure  | Lista todos os pacotes; a filtragem (RF3) permanece em Python.          |
 | `tr_passagem_anti_overbooking`         | Trigger    | Impede assento duplicado na mesma viagem (anti-overbooking).             |
 | `tr_avaliacao_atualiza_ia_feedback`    | Trigger    | Recalcula `IA_Feedback.score_agregado` após mudanças em `Avaliacao`.     |

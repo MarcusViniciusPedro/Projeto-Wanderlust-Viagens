@@ -263,3 +263,87 @@ BEGIN
         VALUES (origem.fk_pacote, origem.score, origem.total, SYSUTCDATETIME());
 END;
 GO
+
+-- sp_criar_pacote: cadastra um pacote (RF "Cadastrar um pacote"). Insere as
+-- seis colunas de dbo.Pacote e devolve o id gerado. A convencao de retorno do
+-- id espelha sp_registrar_venda (SCOPE_IDENTITY): a ultima instrucao e
+-- SELECT CAST(SCOPE_IDENTITY() AS INT), lida no Python via fetchone()[0].
+CREATE PROCEDURE sp_criar_pacote
+    @preco_base  DECIMAL(10,2),
+    @data_inicio DATE,
+    @data_fim    DATE,
+    @estoque     INT,
+    @tipo_viagem NVARCHAR(50),
+    @nivel       NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO dbo.Pacote
+        (preco_base, data_inicio, data_fim, estoque, tipo_viagem, nivel)
+    VALUES
+        (@preco_base, @data_inicio, @data_fim, @estoque, @tipo_viagem, @nivel);
+
+    SELECT CAST(SCOPE_IDENTITY() AS INT) AS id_pacote;  -- id gerado, lido via fetchone()[0]
+END;
+GO
+
+-- sp_atualizar_pacote: altera um pacote existente (RF "Alterar um pacote").
+-- Faz um UPDATE completo das seis colunas e devolve @@ROWCOUNT (linhas
+-- afetadas) como unico resultado, pois sob SET NOCOUNT ON o rowcount do driver
+-- pymssql nao e confiavel. O Python le @@ROWCOUNT via fetchone()[0]: 0 -> None.
+CREATE PROCEDURE sp_atualizar_pacote
+    @id_pacote   INT,
+    @preco_base  DECIMAL(10,2),
+    @data_inicio DATE,
+    @data_fim    DATE,
+    @estoque     INT,
+    @tipo_viagem NVARCHAR(50),
+    @nivel       NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.Pacote
+    SET preco_base  = @preco_base,
+        data_inicio = @data_inicio,
+        data_fim    = @data_fim,
+        estoque     = @estoque,
+        tipo_viagem = @tipo_viagem,
+        nivel       = @nivel
+    WHERE id_pacote = @id_pacote;
+
+    SELECT @@ROWCOUNT;  -- linhas afetadas, lidas via fetchone()[0] no Python
+END;
+GO
+
+-- sp_excluir_pacote: remove um pacote (RF "Deletar um pacote"). Diferente de
+-- usuarios, pacotes NAO tem requisito de soft delete, entao e um hard DELETE.
+-- Devolve @@ROWCOUNT (linhas afetadas) como unico resultado; o Python o le via
+-- fetchone()[0] e retorna bool (True se removeu alguma linha).
+CREATE PROCEDURE sp_excluir_pacote
+    @id_pacote INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DELETE FROM dbo.Pacote
+    WHERE id_pacote = @id_pacote;
+
+    SELECT @@ROWCOUNT;  -- linhas afetadas, lidas via fetchone()[0] no Python
+END;
+GO
+
+-- sp_listar_pacotes: lista todos os pacotes do catalogo (RF "Consultar todos
+-- os pacotes"). Devolve TODAS as linhas com as mesmas colunas/ordem que o
+-- Python espera; a filtragem (RF3) permanece em Python
+-- (app/catalogo/service.filtrar_pacotes), NAO aqui.
+CREATE PROCEDURE sp_listar_pacotes
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT id_pacote, preco_base, data_inicio, data_fim, estoque, tipo_viagem, nivel
+    FROM dbo.Pacote;
+END;
+GO

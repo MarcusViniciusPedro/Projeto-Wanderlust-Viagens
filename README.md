@@ -119,6 +119,14 @@ ordem acima. A descricao completa de todas as tabelas e colunas esta no
 adicionais (INSERT sem lista de colunas com IDENTITY, regra de multiplos
 caminhos de cascade) estao em [`sql/README.md`](sql/README.md).
 
+As sete operacoes de cadastro (alterar dados do usuario, deletar conta e
+consultar todos os usuarios; cadastrar, alterar, deletar e consultar todos os
+pacotes) ficam em stored procedures em `sql/04_programmability.sql`
+(`sp_atualizar_usuario`, `sp_excluir_usuario`, `sp_listar_usuarios`,
+`sp_criar_pacote`, `sp_atualizar_pacote`, `sp_excluir_pacote`,
+`sp_listar_pacotes`) e sao chamadas pelo backend via `EXEC`, nao por SQL
+inline.
+
 ## Configurar e rodar o back-end
 
 Requisitos: Python 3.11+. O SQL Server e **opcional** nesta fase (a API sobe e

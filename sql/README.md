@@ -24,7 +24,7 @@ Execute os scripts na ordem numérica. Cada um depende do anterior:
 | 1     | `01_schema.sql`         | Criação do banco e das 10 tabelas do documento + `Credencial`. |
 | 2     | `02_aiv_tables.sql`     | Tabelas de apoio ao AIV (Preferencia, Questionario_Resposta, Avaliacao, IA_Feedback). |
 | 3     | `03_indexes.sql`        | Índices estratégicos para busca/recomendação.                  |
-| 4     | `04_programmability.sql`| Views, function, stored procedure e triggers.                  |
+| 4     | `04_programmability.sql`| Function, views, stored procedures (incl. CRUD de usuário/pacote) e triggers. |
 | 5     | `05_seed_dml.sql`       | Dados de exemplo + consultas CRUD representativas.              |
 
 Como os scripts fazem `CREATE` direto (sem guardas de "se não existir"),
@@ -77,7 +77,28 @@ do SQL Server (múltiplos caminhos de cascade até `Usuario`, já que `Venda`
 referencia tanto `Conta_turista` quanto `Conta_colaborador`). Para apagar
 dados relacionados, remova primeiro as linhas dependentes.
 
+## Stored procedures e a camada Python
+
+As operações CRUD de escrita/leitura vivem em stored procedures em
+`04_programmability.sql` e são chamadas pelo backend via `EXEC` (driver
+`pymssql`), nunca por SQL inline. Além de `sp_registrar_venda`, as sete
+operações de cadastro pedidas são cobertas por procedures:
+
+- Usuário: `sp_atualizar_usuario` (alterar dados de cadastro),
+  `sp_excluir_usuario` (deletar conta, soft delete/anonimização LGPD) e
+  `sp_listar_usuarios` (consultar todos os usuários).
+- Pacote: `sp_criar_pacote` (cadastrar), `sp_atualizar_pacote` (alterar),
+  `sp_excluir_pacote` (deletar, hard delete) e `sp_listar_pacotes` (consultar
+  todos; a filtragem RF3 permanece em Python).
+
+Sob `SET NOCOUNT ON` o `cursor.rowcount` do `pymssql` não é confiável, então as
+procedures de UPDATE/DELETE terminam com `SELECT @@ROWCOUNT` e as de INSERT com
+`SELECT CAST(SCOPE_IDENTITY() AS INT)`; o Python lê o resultado via
+`fetchone()[0]`.
+
 ## Dicionário de dados
 
 A descrição completa de todas as tabelas e colunas está em
-[`docs/dicionario_de_dados.md`](../docs/dicionario_de_dados.md).
+[`docs/dicionario_de_dados.md`](../docs/dicionario_de_dados.md). A enumeração
+dos objetos de programabilidade (function, views, procedures e triggers) está
+na seção *Objetos de programabilidade* do mesmo documento.

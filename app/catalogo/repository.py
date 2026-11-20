@@ -30,13 +30,9 @@ def listar_pacotes(settings: Optional[Settings] = None) -> List[PacoteSaida]:
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id_pacote, preco_base, data_inicio, data_fim,
-                   estoque, tipo_viagem, nivel
-            FROM dbo.Pacote
-            """
-        )
+        # Leitura via procedure: sp_listar_pacotes devolve TODAS as linhas com
+        # as mesmas colunas/ordem; a filtragem (RF3) continua em service.py.
+        cursor.execute("EXEC dbo.sp_listar_pacotes")
         linhas = cursor.fetchall()
     finally:
         conn.close()
@@ -86,9 +82,14 @@ def buscar_destino(
 
 # ---------------------------------------------------------------------------
 # Gerenciar Catalogo (admin, secao 4.1): escrita de Pacote.
-# Inserts usam OUTPUT INSERTED.<pk> (padrao de usuarios.criar_usuario) e
-# parametrizacao %s (pymssql). Sem banco configurado, get_connection levanta
-# DatabaseNotConfiguredError, convertido em HTTP 503 pelo router.
+# As quatro operacoes de Pacote (criar/alterar/excluir/listar) vivem em
+# stored procedures (sql/04_programmability.sql) e sao chamadas via EXEC com
+# parametrizacao %s (pymssql). A procedure de insercao devolve o id gerado via
+# SELECT CAST(SCOPE_IDENTITY() AS INT) (mesma convencao de sp_registrar_venda),
+# lido via fetchone()[0]. As de update/delete devolvem SELECT @@ROWCOUNT (sob
+# SET NOCOUNT ON o cursor.rowcount do pymssql e nao confiavel). Sem banco
+# configurado, get_connection levanta DatabaseNotConfiguredError, convertido em
+# HTTP 503 pelo router.
 # ---------------------------------------------------------------------------
 
 
@@ -101,10 +102,13 @@ def criar_pacote(
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO dbo.Pacote
-                (preco_base, data_inicio, data_fim, estoque, tipo_viagem, nivel)
-            OUTPUT INSERTED.id_pacote
-            VALUES (%s, %s, %s, %s, %s, %s)
+            EXEC dbo.sp_criar_pacote
+                @preco_base=%s,
+                @data_inicio=%s,
+                @data_fim=%s,
+                @estoque=%s,
+                @tipo_viagem=%s,
+                @nivel=%s
             """,
             (
                 dados.preco_base,
@@ -115,6 +119,7 @@ def criar_pacote(
                 dados.nivel,
             ),
         )
+        # Procedure devolve SELECT CAST(SCOPE_IDENTITY() AS INT); leia o id dai.
         id_pacote = cursor.fetchone()[0]
         conn.commit()
     finally:
@@ -173,26 +178,27 @@ def atualizar_pacote(
         cursor = conn.cursor()
         cursor.execute(
             """
-            UPDATE dbo.Pacote
-            SET preco_base = %s,
-                data_inicio = %s,
-                data_fim = %s,
-                estoque = %s,
-                tipo_viagem = %s,
-                nivel = %s
-            WHERE id_pacote = %s
+            EXEC dbo.sp_atualizar_pacote
+                @id_pacote=%s,
+                @preco_base=%s,
+                @data_inicio=%s,
+                @data_fim=%s,
+                @estoque=%s,
+                @tipo_viagem=%s,
+                @nivel=%s
             """,
             (
+                id_pacote,
                 dados.preco_base,
                 dados.data_inicio,
                 dados.data_fim,
                 dados.estoque,
                 dados.tipo_viagem,
                 dados.nivel,
-                id_pacote,
             ),
         )
-        afetadas = cursor.rowcount
+        # Procedure sob SET NOCOUNT ON devolve SELECT @@ROWCOUNT; leia dai.
+        afetadas = cursor.fetchone()[0]
         conn.commit()
     finally:
         conn.close()
@@ -215,11 +221,9 @@ def excluir_pacote(id_pacote: int, settings: Optional[Settings] = None) -> bool:
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            "DELETE FROM dbo.Pacote WHERE id_pacote = %s",
-            (id_pacote,),
-        )
-        afetadas = cursor.rowcount
+        cursor.execute("EXEC dbo.sp_excluir_pacote %s", (id_pacote,))
+        # Procedure sob SET NOCOUNT ON devolve SELECT @@ROWCOUNT; leia dai.
+        afetadas = cursor.fetchone()[0]
         conn.commit()
     finally:
         conn.close()
