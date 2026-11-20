@@ -73,16 +73,21 @@
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="dias" class="form-label">Duração (dias)</label>
-                                    <input type="number" class="form-control" id="dias" name="dias"
-                                        min="1" step="1" value="1" required>
+                                    <label for="data_inicio" class="form-label">Data inicial</label>
+                                    <input type="date" class="form-control" id="data_inicio" name="data_inicio" required>
+                                    <div class="form-text" id="ajuda-datas">Dentro do período de oferta do pacote.</div>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="numero_pessoas" class="form-label">Quantidade de pessoas</label>
-                                    <input type="number" class="form-control" id="numero_pessoas"
-                                        name="numero_pessoas" min="1" step="1" value="1" required>
-                                    <div class="form-text" id="ajuda-pessoas">Máximo conforme as vagas do pacote.</div>
+                                    <label for="data_fim" class="form-label">Data final</label>
+                                    <input type="date" class="form-control" id="data_fim" name="data_fim" required>
                                 </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="numero_pessoas" class="form-label">Quantidade de pessoas</label>
+                                <input type="number" class="form-control" id="numero_pessoas"
+                                    name="numero_pessoas" min="1" step="1" value="1" required>
+                                <div class="form-text" id="ajuda-pessoas">Máximo conforme as vagas do pacote.</div>
                             </div>
 
                             <div class="mb-3">
@@ -133,10 +138,6 @@
                                 </div>
                             </div>
 
-                            <div class="form-check mb-3">
-                                <input class="form-check-input" type="checkbox" id="alta_temporada" name="alta_temporada">
-                                <label class="form-check-label" for="alta_temporada">Alta temporada</label>
-                            </div>
                         </fieldset>
 
                         <div id="carrinho-feedback" class="cadastro-feedback" role="alert" aria-live="polite" hidden></div>
@@ -146,10 +147,34 @@
                         </button>
                     </form>
 
-                    <!-- Resultado do orçamento -->
-                    <section id="orcamento-resultado" class="orcamento-total" aria-live="polite" hidden>
-                        <span class="orcamento-rotulo">Total estimado</span>
-                        <span class="orcamento-valor" id="orcamento-valor">—</span>
+                    <!-- Resultado do orçamento + detalhamento do cálculo -->
+                    <section id="orcamento-resultado" aria-live="polite" hidden>
+                        <h2 class="cadastro-legenda mt-3">Como o cálculo foi feito</h2>
+                        <dl class="resumo-lista" id="orcamento-detalhe"></dl>
+
+                        <div class="orcamento-total">
+                            <span class="orcamento-rotulo">Total estimado</span>
+                            <span class="orcamento-valor" id="orcamento-valor">—</span>
+                        </div>
+
+                        <form id="form-confirmar" class="mt-3">
+                            <div class="mb-3">
+                                <label for="forma_pagamento" class="form-label">Forma de pagamento</label>
+                                <select class="form-select" id="forma_pagamento" name="forma_pagamento" required>
+                                    <option value="" selected disabled>Selecione...</option>
+                                    <option value="debito">Débito</option>
+                                    <option value="credito">Crédito</option>
+                                    <option value="pix">Pix</option>
+                                    <option value="boleto">Boleto</option>
+                                </select>
+                            </div>
+
+                            <div id="confirmar-feedback" class="cadastro-feedback" role="alert" aria-live="polite" hidden></div>
+
+                            <button type="submit" class="btn btn-success w-100" id="btn-confirmar">
+                                Confirmar compra
+                            </button>
+                        </form>
                     </section>
                 </div>
             </article>

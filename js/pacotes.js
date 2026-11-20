@@ -122,7 +122,7 @@ function criarModal(pac) {
           <p class="pacote-descricao">${pac.descricao}</p>
         </div>
         <div class="modal-footer">
-          <a href="carrinho.html" class="btn btn-primary">Reserve já</a>
+          <button type="button" class="btn btn-primary" data-reservar="${pac.id}">Reserve já</button>
         </div>
       </div>
     </div>`;
