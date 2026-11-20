@@ -1,109 +1,175 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport">
+        <title>Wanderlust Viagens</title>
+        <link rel="icon" type="image/svg+xml" href="imgs/icon.svg">
 
-    <title>Wanderlust Viagens</title>
-    <link rel="icon" type="image/png" href="imgs/icon.png">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="css/style.css">
+    </head>
+    <body>
 
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/style.css" rel="stylesheet">
-</head>
-
-<body>
-
-    <header>
-        <nav class="navbar navbar-expand-md navbar-dark bg-light fixed-top">
-            <a href="" class="navbar-brand">
-                  <h1 class="display-5 text-secondary m-0">
-                    <img src="imgs/icon.png" class="img-fluid logo-icon" alt="Wonderlust Viagens - Icon">   Wonderlust</h1>
-                  </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
-                <span class="fa fa-bars"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarCollapse">
-                <div class="navbar-nav ms-auto py-0">
-                    <a href="index.html" class="nav-item nav-link active">Página Inicial</a>
-                    <a href="pages/pacotes.html" class="nav-item nav-link">Pacotes</a>
-                    <a href="pages/login.html" class="nav-item nav-link">Login</a>
-                    <a href="pages/cadastro.html" class="nav-item nav-link">Cadastre-se</a>
-                    <a href="pages/carrinho.html" class="nav-item nav-link">Cadastre-se</a>
-                </div>
-                <button class="btn btn-primary btn-md-square border-secondary mb-3 mb-md-3 mb-lg-0 me-3"
-                    data-bs-toggle="modal" data-bs-target="#searchModal"><i class="fas fa-search"></i></button>
-                <a href=""
-                    class="btn btn-primary border-secondary rounded-pill py-2 px-4 px-lg-3 mb-3 mb-md-3 mb-lg-0">Cadastre-se</a>
-            </div>
-        </nav>
-
-        <div class="container-fluid nav-bar p-0" <nav class="menu navbar navbar-expand-lg" aria-label="Menu principal"
-            data-bs-theme="dark">
-            <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#menu-nav"
-                aria-controls="menu-nav" aria-expanded="false" aria-label="Abrir menu">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="collapse navbar-collapse" id="menu-nav">
-                <ul class="menu-lista navbar-nav">
-                    <li><a href="home.html">Home</a></li>
-                    <li><a href="pages/pacotes.html">Pacotes</a></li>
-                    <li><a href="pages/login.html">login</a></li>
-                    <li><a href="pages/cadastro.html">Cadastre-se</a></li>
-                    <li><a href="pages/carrinho.html">Carrinho</a></li>
-                </ul>
-            </div>
-            </nav>
-        </div>
-    </header>
-
-    <main>
-        <h2>DESCUBRA A SUA PRÓXIMA VIAGEM!</h2>
-
-    </main>
-
-    <footer>
-
-    </footer>
-
-    <footer>
-
-        <h2>ENTRE EM CONTATO</h2>
-
-        <section aria-label="Informações de contato">
-
-            <section class="contato-item">
-                <h3>LOCALIZAÇÃO</h3>
-                <p>São Paulo - SP</p>
-            </section>
-
-            <section>
-                <h3>TELEFONE</h3>
-                <p>
-                    <a href="tel:+5511912345678">(11) 9 1234-5678</a>
-                </p>
-            </section>
-
-            <section class="contato-item">
-                <h3>E-MAIL</h3>
-                <p>
-                    <a href="mailto:sac@sampatour.com.br">
-                        sac@wanderlustviagens.com.br
+        <header>
+            <nav class="menu navbar navbar-expand-md" aria-label="Menu principal" data-bs-theme="dark">
+                <div class="container-fluid">
+                    <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+                        <img src="imgs/icon.svg" alt="" class="logo-icon">
+                        <span>Wanderlust Viagens</span>
                     </a>
-                </p>
+
+                    <button class="navbar-toggler" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#menu-nav"
+                        aria-controls="menu-nav" aria-expanded="false" aria-label="Abrir menu">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+
+                    <div class="collapse navbar-collapse" id="menu-nav">
+                        <ul class="menu-lista navbar-nav ms-auto">
+                            <li class="nav-item"><a class="nav-link active" aria-current="page" href="index.html">Home</a></li>
+                            <li class="nav-item"><a class="nav-link" href="pages/pacotes.html">Pacotes</a></li>
+                            <li class="nav-item"><a class="nav-link" href="pages/login.html">Login</a></li>
+                            <li class="nav-item"><a class="nav-link" href="pages/cadastro.html">Cadastre-se</a></li>
+                            <li class="nav-item"><a class="nav-link" href="pages/carrinho.html">Carrinho</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <main>
+
+            <!-- Carrossel de topo: 3 imagens (espaços reservados), cada uma com
+                 um texto chamativo por cima. Troque o fundo de cada slide em
+                 .hero-slide-1/2/3 no CSS. -->
+            <section aria-label="Destaques">
+                <div id="carrossel-topo" class="carousel slide hero-carrossel" data-bs-ride="carousel">
+                    <div class="carousel-indicators">
+                        <button type="button" data-bs-target="#carrossel-topo" data-bs-slide-to="0"
+                            class="active" aria-current="true" aria-label="Slide 1"></button>
+                        <button type="button" data-bs-target="#carrossel-topo" data-bs-slide-to="1"
+                            aria-label="Slide 2"></button>
+                        <button type="button" data-bs-target="#carrossel-topo" data-bs-slide-to="2"
+                            aria-label="Slide 3"></button>
+                    </div>
+
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <div class="hero-slide hero-slide-1">
+                                <div class="hero-conteudo">
+                                    <h1 class="hero-titulo">Sua próxima aventura começa aqui</h1>
+                                    <p class="hero-subtitulo">Descubra destinos inesquecíveis com a Wanderlust Viagens.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="carousel-item">
+                            <div class="hero-slide hero-slide-2">
+                                <div class="hero-conteudo">
+                                    <h1 class="hero-titulo">Experiências para todos os perfis</h1>
+                                    <p class="hero-subtitulo">Do relax ao radical, temos o pacote certo para você.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="carousel-item">
+                            <div class="hero-slide hero-slide-3">
+                                <div class="hero-conteudo">
+                                    <h1 class="hero-titulo">Reserve com facilidade</h1>
+                                    <p class="hero-subtitulo">Escolha seu destino e garanta sua viagem em poucos cliques.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="carousel-control-prev" type="button"
+                        data-bs-target="#carrossel-topo" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Anterior</span>
+                    </button>
+                    <button class="carousel-control-next" type="button"
+                        data-bs-target="#carrossel-topo" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Próximo</span>
+                    </button>
+                </div>
             </section>
 
-            <section>
-                <h3>REDES SOCIAIS</h3>
-                <p>@wanderlustviagens</p>
+            <!-- Barra de busca: data de início, destino (estado), tipo de viagem e
+                 valor máximo (slider). Ao buscar, os filtros vão para pacotes.html
+                 via query string e a lista é filtrada lá. -->
+            <section class="busca" aria-label="Buscar viagens">
+                <form class="busca-barra" id="form-busca" action="pages/pacotes.html" method="get">
+                    <div class="busca-campo">
+                        <span class="busca-icone" aria-hidden="true"><!-- ícone: data --></span>
+                        <label for="busca-data-inicio" class="busca-label">Data de início</label>
+                        <input type="date" id="busca-data-inicio" name="data_inicio" class="busca-input">
+                    </div>
+
+                    <div class="busca-campo">
+                        <span class="busca-icone" aria-hidden="true"><!-- ícone: destino --></span>
+                        <label for="busca-estado" class="busca-label">Destino</label>
+                        <select id="busca-estado" name="estado" class="busca-input">
+                            <option value="" selected>Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="busca-campo">
+                        <span class="busca-icone" aria-hidden="true"><!-- ícone: tipo --></span>
+                        <label for="busca-tipo" class="busca-label">Tipo de viagem</label>
+                        <select id="busca-tipo" name="tipo_viagem" class="busca-input">
+                            <option value="" selected>Todos</option>
+                            <option value="relax">Relax</option>
+                            <option value="cultural">Cultural</option>
+                            <option value="radical">Radical</option>
+                        </select>
+                    </div>
+
+                    <div class="busca-campo busca-campo-valor">
+                        <span class="busca-icone" aria-hidden="true"><!-- ícone: valor --></span>
+                        <label for="busca-valor" class="busca-label">
+                            Valor até <output id="busca-valor-saida" for="busca-valor">R$ 100.000,00</output>
+                        </label>
+                        <input type="range" id="busca-valor" name="valor_max" class="busca-slider"
+                            min="100" max="50000" step="100" value="1000">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary busca-botao">Buscar</button>
+                </form>
             </section>
 
-        </section>
+        </main>
 
-    </footer>
+        <footer class="rodape">
+            <h2>ENTRE EM CONTATO</h2>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+            <section aria-label="Informações de contato" class="rodape-contatos">
+                <section class="contato-item">
+                    <h3>LOCALIZAÇÃO</h3>
+                    <p>São Paulo - SP</p>
+                </section>
 
-</body>
+                <section class="contato-item">
+                    <h3>TELEFONE</h3>
+                    <p><a href="tel:+5511912345678">(11) 9 1234-5678</a></p>
+                </section>
+
+                <section class="contato-item">
+                    <h3>E-MAIL</h3>
+                    <p><a href="mailto:sac@wanderlustviagens.com.br">sac@wanderlustviagens.com.br</a></p>
+                </section>
+
+                <section class="contato-item">
+                    <h3>REDES SOCIAIS</h3>
+                    <p>@wanderlustviagens</p>
+                </section>
+            </section>
+        </footer>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="js/pacotes-dados.js"></script>
+        <script src="js/home.js"></script>
+    </body>
+</html>

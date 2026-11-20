@@ -4,3 +4,448 @@
     height: 0.75em;
     width: auto;
 }
+
+.menu.navbar {
+    background-color: #0d3b66;
+}
+
+.menu .navbar-brand {
+    color: #fff;
+    font-weight: 600;
+}
+
+.menu .nav-link {
+    color: #e9eef5;
+}
+
+.menu .nav-link:hover,
+.menu .nav-link:focus,
+.menu .nav-link.active {
+    color: #ffd166;
+}
+
+/* página de cadastro */
+
+.cadastro-main {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2.5rem 1rem;
+    background-color: #f2f5f9;
+    min-height: calc(100vh - 56px);
+}
+
+.cadastro-card {
+    width: 100%;
+    max-width: 640px;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(13, 59, 102, 0.12);
+    padding: 2rem;
+}
+
+.cadastro-titulo {
+    color: #0d3b66;
+    font-size: 1.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.cadastro-subtitulo {
+    color: #5b6b7d;
+    margin-bottom: 1.5rem;
+}
+
+.cadastro-card fieldset {
+    border: 0;
+    margin: 0 0 1rem;
+    padding: 0;
+}
+
+.cadastro-legenda {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #0d3b66;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid #e3e9f0;
+    padding-bottom: 0.4rem;
+    margin-bottom: 1rem;
+}
+
+.cadastro-feedback {
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.cadastro-feedback.feedback-erro {
+    background-color: #fdecea;
+    color: #a4291e;
+    border: 1px solid #f5c6c0;
+}
+
+.cadastro-feedback.feedback-ok {
+    background-color: #e7f6ec;
+    color: #1d6a38;
+    border: 1px solid #b7e2c4;
+}
+
+.cadastro-rodape {
+    text-align: center;
+    margin-top: 1.25rem;
+    margin-bottom: 0;
+    color: #5b6b7d;
+}
+
+/* home: hero (imagem de topo reservada) */
+
+.hero-slide {
+    position: relative;
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #fff;
+    background-size: cover;
+    background-position: center;
+}
+
+/* espaços reservados para as 3 imagens do carrossel de topo;
+   troque cada background-image por url("../imgs/slide-N.jpg") */
+.hero-slide-1 { background-color: #0d3b66; }
+.hero-slide-2 { background-color: #14507d; }
+.hero-slide-3 { background-color: #0a2e52; }
+
+.hero-conteudo {
+    padding: 1.5rem;
+    background-color: rgba(13, 59, 102, 0.35);
+    border-radius: 12px;
+}
+
+.hero-titulo {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.hero-subtitulo {
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+/* home: barra de busca (destino / data / pessoas) */
+
+.busca {
+    display: flex;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+    position: relative;
+    z-index: 2;
+}
+
+.busca-barra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(13, 59, 102, 0.15);
+    padding: 1.25rem;
+    width: 100%;
+    max-width: 900px;
+}
+
+.busca-campo {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 180px;
+    position: relative;
+}
+
+.busca-icone {
+    /* espaço reservado para um ícone em cada campo */
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-bottom: 0.25rem;
+    display: inline-block;
+    background-color: #e3e9f0;
+    border-radius: 4px;
+}
+
+.busca-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #0d3b66;
+    margin-bottom: 0.25rem;
+}
+
+.busca-input {
+    border: 1px solid #cdd7e3;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.95rem;
+}
+
+.busca-botao {
+    flex: 0 0 auto;
+    align-self: stretch;
+    padding: 0.5rem 1.5rem;
+}
+
+.busca-campo-valor {
+    flex: 1 1 220px;
+}
+
+.busca-slider {
+    width: 100%;
+    accent-color: #0d3b66;
+}
+
+.pacotes-vazio {
+    text-align: center;
+    color: #5b6b7d;
+    padding: 2rem 1rem;
+}
+
+/* página de pacotes: grade de cards */
+
+.pacotes-main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5rem 1rem;
+}
+
+.pacotes-grade {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    align-items: stretch;
+}
+
+/* cards da grade: ocupam toda a coluna e têm a mesma altura */
+.pacotes-grade .pacote-card {
+    max-width: none;
+    margin: 0;
+    height: 100%;
+}
+
+.pacotes-grade .pacote-corpo {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+}
+
+/* empurra o botão para a base, alinhando-o em todos os cards */
+.pacotes-grade .pacote-corpo .btn {
+    margin-top: auto;
+}
+
+@media (max-width: 768px) {
+    .pacotes-grade {
+        grid-template-columns: 1fr;
+    }
+}
+
+.pacote-tipo {
+    display: inline-block;
+    background-color: #e9eef5;
+    color: #0d3b66;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 0.5rem;
+}
+
+.pacote-preco {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0d3b66;
+    margin-bottom: 1rem;
+}
+
+.pacote-descricao {
+    color: #5b6b7d;
+    margin-top: 1rem;
+    margin-bottom: 0;
+}
+
+/* home: catálogo / carrossel de pacotes */
+
+.catalogo {
+    max-width: 900px;
+    margin: 3rem auto;
+    padding: 0 1rem;
+}
+
+.catalogo-titulo {
+    text-align: center;
+    color: #0d3b66;
+    margin-bottom: 2rem;
+}
+
+.pacote-card {
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    background-color: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(13, 59, 102, 0.1);
+}
+
+.pacote-imagem {
+    /* espaço reservado para a imagem do pacote */
+    height: 220px;
+    background-color: #e3e9f0;
+}
+
+.pacote-corpo {
+    padding: 1.25rem;
+    text-align: center;
+}
+
+.pacote-nome {
+    color: #0d3b66;
+    margin-bottom: 0.5rem;
+}
+
+.pacote-desc {
+    color: #5b6b7d;
+    margin-bottom: 1rem;
+}
+
+#carrossel-pacotes .carousel-control-prev-icon,
+#carrossel-pacotes .carousel-control-next-icon {
+    background-color: #0d3b66;
+    border-radius: 50%;
+    padding: 1rem;
+    background-size: 50%;
+}
+
+/* resumo da venda (carrinho) */
+
+.resumo-lista {
+    margin: 0;
+}
+
+.resumo-linha {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid #e3e9f0;
+}
+
+.resumo-linha dt {
+    color: #5b6b7d;
+    font-weight: 500;
+    margin: 0;
+}
+
+.resumo-linha dd {
+    margin: 0;
+    font-weight: 600;
+    color: #0d3b66;
+    text-align: right;
+}
+
+/* carrinho: prévia do pacote e total do orçamento */
+
+.previa-pacote {
+    margin-bottom: 1.5rem;
+}
+
+.previa-corpo {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.previa-imagem {
+    flex: 0 0 160px;
+    height: 120px;
+    background-color: #e3e9f0;
+    border-radius: 8px;
+}
+
+.previa-dados {
+    flex: 1 1 260px;
+    margin: 0;
+}
+
+.orcamento-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    background-color: #e7f6ec;
+    border: 1px solid #b7e2c4;
+    border-radius: 8px;
+}
+
+.orcamento-rotulo {
+    font-weight: 600;
+    color: #1d6a38;
+}
+
+.orcamento-valor {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1d6a38;
+}
+
+.badge-status {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background-color: #e9eef5;
+    color: #0d3b66;
+}
+
+/* rodapé */
+
+.rodape {
+    background-color: #0d3b66;
+    color: #e9eef5;
+    padding: 2rem 1rem;
+}
+
+.rodape h2 {
+    text-align: center;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.5rem;
+}
+
+.rodape-contatos {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem 3rem;
+    text-align: center;
+}
+
+.rodape-contatos h3 {
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    color: #ffd166;
+    margin-bottom: 0.35rem;
+}
+
+.rodape-contatos a {
+    color: #e9eef5;
+    text-decoration: none;
+}
+
+.rodape-contatos a:hover {
+    text-decoration: underline;
+}
