@@ -539,3 +539,28 @@ def test_novas_rotas_crud_tabelas_no_openapi(client: TestClient):
     assert "delete" in paths["/catalogo/hospedagens/{id_hospedagem}"]
     assert "get" in paths["/catalogo/pacotes/{id_pacote}"]
     assert "get" in paths["/catalogo/destinos"]
+
+
+def test_put_catalogo_vincula_schemas_atualizar_no_openapi(client: TestClient):
+    """As rotas PUT de catalogo bindam os schemas *Atualizar (nao os *Criar).
+
+    Garante que ``HospedagemAtualizar``/``PacoteAtualizar``/``DestinoAtualizar``
+    (antes nao-usados) ficam efetivamente ligados ao corpo do PUT, mantendo a
+    simetria entre as tres entidades de catalogo.
+    """
+    spec = client.get("/openapi.json").json()
+    paths = spec["paths"]
+
+    def _schema_ref_do_put(caminho: str) -> str:
+        corpo = paths[caminho]["put"]["requestBody"]["content"]
+        return corpo["application/json"]["schema"]["$ref"]
+
+    assert _schema_ref_do_put("/catalogo/hospedagens/{id_hospedagem}").endswith(
+        "/HospedagemAtualizar"
+    )
+    assert _schema_ref_do_put("/catalogo/pacotes/{id_pacote}").endswith(
+        "/PacoteAtualizar"
+    )
+    assert _schema_ref_do_put("/catalogo/destinos/{id_destino}").endswith(
+        "/DestinoAtualizar"
+    )

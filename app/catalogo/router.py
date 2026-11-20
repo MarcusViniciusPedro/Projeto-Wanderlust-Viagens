@@ -19,10 +19,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.catalogo import repository
 from app.catalogo.schemas import (
+    DestinoAtualizar,
     DestinoCriar,
     DestinoSaida,
+    HospedagemAtualizar,
     HospedagemCriar,
     HospedagemSaida,
+    PacoteAtualizar,
     PacoteCriar,
     PacoteSaida,
     ResultadoBusca,
@@ -159,7 +162,7 @@ def criar_pacote(dados: PacoteCriar) -> PacoteSaida:
     response_model=PacoteSaida,
     dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
 )
-def atualizar_pacote(id_pacote: int, dados: PacoteCriar) -> PacoteSaida:
+def atualizar_pacote(id_pacote: int, dados: PacoteAtualizar) -> PacoteSaida:
     """Atualiza um pacote existente (Gerenciar Catalogo, secao 4.1)."""
     try:
         atualizado = repository.atualizar_pacote(id_pacote, dados)
@@ -229,7 +232,7 @@ def obter_destino(id_destino: int) -> DestinoSaida:
     response_model=DestinoSaida,
     dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
 )
-def atualizar_destino(id_destino: int, dados: DestinoCriar) -> DestinoSaida:
+def atualizar_destino(id_destino: int, dados: DestinoAtualizar) -> DestinoSaida:
     """Atualiza um destino existente (Gerenciar Catalogo, secao 4.1)."""
     try:
         atualizado = repository.atualizar_destino(id_destino, dados)
@@ -374,7 +377,7 @@ def obter_hospedagem(id_hospedagem: int) -> HospedagemSaida:
     dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
 )
 def atualizar_hospedagem(
-    id_hospedagem: int, dados: HospedagemCriar
+    id_hospedagem: int, dados: HospedagemAtualizar
 ) -> HospedagemSaida:
     """Atualiza uma hospedagem existente (Gerenciar Catalogo, secao 4.1)."""
     try:

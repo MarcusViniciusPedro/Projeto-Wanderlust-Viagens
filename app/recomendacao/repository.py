@@ -180,10 +180,18 @@ def registrar_avaliacao(
 ) -> int:
     """Insere uma avaliacao do turista para um pacote e retorna o id gerado.
 
-    A restricao UNIQUE(fk_turista, fk_pacote) garante uma avaliacao por par;
-    uma segunda tentativa viola a restricao e levanta
-    ``AvaliacaoDuplicadaError`` (convertida em HTTP 409 pelo router).
+    A restricao UNIQUE(fk_turista, fk_pacote) garante uma avaliacao por par. O
+    INSERT e a guarda AUTORITATIVA contra duplicatas: se ele violar a restricao
+    (``pymssql.IntegrityError``), a violacao e traduzida em
+    ``AvaliacaoDuplicadaError`` (convertida em HTTP 409 pelo router). O SELECT
+    previo e apenas um atalho para responder 409 sem tentar o INSERT no caso
+    comum; ele NAO protege contra concorrencia (dois pedidos podem passar pelo
+    SELECT e so o INSERT barra o segundo), por isso o tratamento no INSERT.
     """
+    # Import preguicoso do driver (como em app.db.session): manter o modulo
+    # importavel sem o pymssql instalado/sem banco vivo.
+    import pymssql
+
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
@@ -198,17 +206,26 @@ def registrar_avaliacao(
             raise AvaliacaoDuplicadaError(
                 "Voce ja avaliou este pacote. Use a atualizacao da avaliacao."
             )
-        cursor.execute(
-            """
-            INSERT INTO dbo.Avaliacao
-                (fk_turista, fk_pacote, nota, comentario)
-            OUTPUT INSERTED.id_avaliacao
-            VALUES (%s, %s, %s, %s)
-            """,
-            (fk_turista, fk_pacote, nota, comentario),
-        )
-        id_avaliacao = cursor.fetchone()[0]
-        conn.commit()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO dbo.Avaliacao
+                    (fk_turista, fk_pacote, nota, comentario)
+                OUTPUT INSERTED.id_avaliacao
+                VALUES (%s, %s, %s, %s)
+                """,
+                (fk_turista, fk_pacote, nota, comentario),
+            )
+            id_avaliacao = cursor.fetchone()[0]
+            conn.commit()
+        except pymssql.IntegrityError as exc:
+            # Corrida: outro pedido inseriu o mesmo par entre o SELECT e o
+            # INSERT e a UNIQUE(fk_turista, fk_pacote) barrou este. Desfaz e
+            # traduz para o erro de duplicata (409), nunca 500.
+            conn.rollback()
+            raise AvaliacaoDuplicadaError(
+                "Voce ja avaliou este pacote. Use a atualizacao da avaliacao."
+            ) from exc
     finally:
         conn.close()
 

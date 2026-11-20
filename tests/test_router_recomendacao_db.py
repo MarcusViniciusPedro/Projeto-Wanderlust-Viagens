@@ -266,6 +266,72 @@ def test_avaliacao_nota_invalida_422(
 
 
 # --------------------------------------------------------------------------
+# (d2) Corrida no INSERT: a UNIQUE(fk_turista, fk_pacote) barra o segundo
+# pedido que escapou do SELECT previo. O repository traduz a IntegrityError do
+# pymssql em AvaliacaoDuplicadaError e a rota responde 409 (nunca 500).
+# --------------------------------------------------------------------------
+
+
+class _FakeCursorIntegrityNoInsert:
+    """Cursor que nao ve duplicata no SELECT mas quebra a UNIQUE no INSERT."""
+
+    def __init__(self) -> None:
+        self._ultimo_select_vazio = True
+
+    def execute(self, sql, params=None):
+        import pymssql
+
+        if sql.strip().upper().startswith("SELECT"):
+            # SELECT previo nao encontra o par (corrida): segue para o INSERT.
+            self._ultimo_select_vazio = True
+            return
+        # INSERT: a restricao UNIQUE barra, como faria o SQL Server.
+        raise pymssql.IntegrityError(
+            "Violation of UNIQUE KEY constraint 'uq_avaliacao_turista_pacote'."
+        )
+
+    def fetchone(self):
+        # SELECT previo retorna None (nenhuma linha): nao detecta duplicata.
+        return None
+
+
+class _FakeConnIntegrity:
+    def __init__(self) -> None:
+        self.rolled_back = False
+
+    def cursor(self):
+        return _FakeCursorIntegrityNoInsert()
+
+    def commit(self):  # pragma: no cover - nao alcancado nesta corrida
+        raise AssertionError("commit nao deve ocorrer apos a violacao da UNIQUE")
+
+    def rollback(self):
+        self.rolled_back = True
+
+    def close(self):
+        pass
+
+
+def test_registrar_avaliacao_corrida_insert_vira_duplicada(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Unit test do repository: IntegrityError no INSERT -> AvaliacaoDuplicadaError.
+
+    Simula a corrida em que o SELECT previo nao viu a duplicata mas o INSERT
+    violou a UNIQUE. Sem banco vivo: ``get_connection`` e substituido por uma
+    conexao fake cujo INSERT levanta ``pymssql.IntegrityError``.
+    """
+    from app.recomendacao import repository
+
+    conn = _FakeConnIntegrity()
+    monkeypatch.setattr(repository, "get_connection", lambda settings=None: conn)
+
+    with pytest.raises(AvaliacaoDuplicadaError):
+        repository.registrar_avaliacao(fk_turista=7, fk_pacote=1, nota=5)
+    assert conn.rolled_back is True
+
+
+# --------------------------------------------------------------------------
 # (e) GET /recomendacao/pacotes/{id}/feedback (agrega via service real)
 # --------------------------------------------------------------------------
 
