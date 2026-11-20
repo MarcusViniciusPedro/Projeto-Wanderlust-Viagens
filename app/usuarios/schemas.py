@@ -8,6 +8,7 @@ os valores do banco de dados ('Turista', 'Agente', 'Administrador').
 from __future__ import annotations
 
 from datetime import date
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -26,6 +27,9 @@ __all__ = [
     "LoginDesafioResposta",
     "Verificar2FARequest",
     "TokenResposta",
+    "StatusConta",
+    "ContaAdminSaida",
+    "AlterarStatusContaRequest",
 ]
 
 
@@ -103,3 +107,40 @@ class TokenResposta(BaseModel):
     # Id do usuario logado (claim ``id`` do JWT); usado pelo front para vincular
     # a venda ao turista. Opcional para compatibilidade com tokens antigos.
     id_passageiro: Optional[int] = None
+
+
+# ---------------------------------------------------------------------------
+# Gerenciar Contas (Administrador, secao 4.1 / RNF3 / LGPD).
+# O admin lista contas, altera o status (banir/denunciar/reativar) e apaga
+# (soft delete). Estes schemas NAO expoem dados pessoais sensiveis (cpf,
+# senha, data de nascimento, etc.): so o minimo para operar sobre a conta.
+# ---------------------------------------------------------------------------
+
+
+class StatusConta(str, Enum):
+    """Estado da conta (coluna ``Usuario.status``). Valores iguais ao CHECK."""
+
+    ATIVO = "Ativo"
+    BANIDO = "Banido"
+    DENUNCIADO = "Denunciado"
+
+
+class ContaAdminSaida(BaseModel):
+    """Visao administrativa de uma conta, sem dados pessoais sensiveis (RNF3).
+
+    De proposito NAO inclui cpf, senha, data de nascimento, cep ou telefone:
+    o Gerenciar Contas permite moderar contas, nao ler/editar dados pessoais.
+    """
+
+    id_passageiro: int
+    nome: str
+    email: Optional[str] = None
+    papel: Papel
+    status: StatusConta
+
+
+class AlterarStatusContaRequest(BaseModel):
+    """Pedido para banir/denunciar/reativar uma conta (Gerenciar Contas)."""
+
+    novo_status: StatusConta
+    motivo: Optional[str] = Field(default=None, max_length=500)

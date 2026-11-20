@@ -21,7 +21,9 @@ INSERT INTO Destino VALUES
     (N'Paris',          N'IDF',N'Franca',  N'Cultural', N'Museus, gastronomia e arquitetura.');
 
 -- 2) Usuarios  -> id 1 (turista), id 2 (colaborador)
-INSERT INTO Usuario VALUES
+-- Lista de colunas explicita: a coluna status (extensao, secao 4.1) fica no
+-- DEFAULT ('Ativo'), sem precisar informar valor aqui.
+INSERT INTO Usuario (nome, nome_social, pronome, data_nascimento, cpf, cep, email, telefone, papel) VALUES
     (N'Ana Beatriz Souza', NULL, N'ela/dela', '1995-04-12', N'111.222.333-44', N'22000-000', N'ana.souza@example.com', N'+5521999990000', N'Turista'),
     (N'Carlos Mendes', N'Carla Mendes', N'ela/dela', '1988-09-30', N'555.666.777-88', N'01000-000', N'carla.mendes@example.com', N'+5511988887777', N'Agente');
 

@@ -45,6 +45,7 @@ Pessoa cadastrada (base para turista e colaborador).
 | email           | NVARCHAR(254) | Sim  | UQ    | **Extensão (RF1/RF2)**: e-mail de login/contato (único).|
 | telefone        | NVARCHAR(20)  | Sim  |       | **Extensão (RNF3)**: telefone para SMS 2FA.             |
 | papel           | NVARCHAR(20)  | Não  |       | **Extensão**: papel (`Turista`/`Agente`/`Administrador`). |
+| status          | NVARCHAR(20)  | Não  |       | **Extensão (seção 4.1/RNF3)**: estado da conta (`Ativo`/`Banido`/`Denunciado`) — CHECK, DEFAULT `Ativo`. Suporta o *Gerenciar Contas* do admin (banir/denunciar/reativar) e o *soft delete* (anonimização) sem expor dados pessoais. |
 
 ---
 

@@ -13,11 +13,24 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.catalogo import repository
-from app.catalogo.schemas import ResultadoBusca, StreetViewSaida
+from app.catalogo.schemas import (
+    DestinoCriar,
+    DestinoSaida,
+    PacoteCriar,
+    PacoteSaida,
+    ResultadoBusca,
+    StreetViewSaida,
+    ViagemCriar,
+    ViagemSaida,
+)
 from app.catalogo.service import filtrar_pacotes
+from app.core.authz import Permissao
+from app.core.deps import requer_permissao
 from app.db.session import DatabaseNotConfiguredError
 from app.integracoes.streetview import (
     montar_embed_html,
@@ -83,3 +96,182 @@ def streetview_destino(id_destino: int) -> StreetViewSaida:
         url=url,
         embed_html=montar_embed_html(url, local),
     )
+
+
+# ---------------------------------------------------------------------------
+# Gerenciar Catalogo (Administrador, secao 4.1): CRUD de Pacote e Destino.
+# Todas as rotas abaixo exigem a permissao GERENCIAR_CATALOGO (403 para quem
+# nao tem; 401 sem token). As rotas GET publicas acima permanecem sem gate.
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/pacotes",
+    response_model=PacoteSaida,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def criar_pacote(dados: PacoteCriar) -> PacoteSaida:
+    """Cria um pacote no catalogo (Gerenciar Catalogo, secao 4.1)."""
+    try:
+        return repository.criar_pacote(dados)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+
+@router.put(
+    "/pacotes/{id_pacote}",
+    response_model=PacoteSaida,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def atualizar_pacote(id_pacote: int, dados: PacoteCriar) -> PacoteSaida:
+    """Atualiza um pacote existente (Gerenciar Catalogo, secao 4.1)."""
+    try:
+        atualizado = repository.atualizar_pacote(id_pacote, dados)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if atualizado is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Pacote nao encontrado."
+        )
+    return atualizado
+
+
+@router.delete(
+    "/pacotes/{id_pacote}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def excluir_pacote(id_pacote: int) -> None:
+    """Remove um pacote do catalogo (Gerenciar Catalogo, secao 4.1)."""
+    try:
+        removido = repository.excluir_pacote(id_pacote)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if not removido:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Pacote nao encontrado."
+        )
+
+
+@router.post(
+    "/destinos",
+    response_model=DestinoSaida,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def criar_destino(dados: DestinoCriar) -> DestinoSaida:
+    """Cria um destino no catalogo (Gerenciar Catalogo, secao 4.1)."""
+    try:
+        return repository.criar_destino(dados)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+
+@router.get(
+    "/destinos/{id_destino}",
+    response_model=DestinoSaida,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def obter_destino(id_destino: int) -> DestinoSaida:
+    """Carrega um destino completo pelo id (Gerenciar Catalogo, secao 4.1)."""
+    try:
+        destino = repository.buscar_destino_completo(id_destino)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if destino is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Destino nao encontrado."
+        )
+    return destino
+
+
+@router.put(
+    "/destinos/{id_destino}",
+    response_model=DestinoSaida,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def atualizar_destino(id_destino: int, dados: DestinoCriar) -> DestinoSaida:
+    """Atualiza um destino existente (Gerenciar Catalogo, secao 4.1)."""
+    try:
+        atualizado = repository.atualizar_destino(id_destino, dados)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if atualizado is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Destino nao encontrado."
+        )
+    return atualizado
+
+
+@router.delete(
+    "/destinos/{id_destino}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
+)
+def excluir_destino(id_destino: int) -> None:
+    """Remove um destino do catalogo (Gerenciar Catalogo, secao 4.1)."""
+    try:
+        removido = repository.excluir_destino(id_destino)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if not removido:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Destino nao encontrado."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Agendar Viagem (Administrador, secao 4.1): criar/listar/excluir Viagem.
+# Exige a permissao AGENDAR.
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/viagens",
+    response_model=ViagemSaida,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(requer_permissao(Permissao.AGENDAR))],
+)
+def agendar_viagem(dados: ViagemCriar) -> ViagemSaida:
+    """Agenda uma viagem vinculada a um destino (Agendar Viagem, secao 4.1)."""
+    try:
+        return repository.criar_viagem(dados)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+
+@router.get(
+    "/viagens",
+    response_model=List[ViagemSaida],
+    dependencies=[Depends(requer_permissao(Permissao.AGENDAR))],
+)
+def listar_viagens() -> List[ViagemSaida]:
+    """Lista as viagens agendadas (Agendar Viagem, secao 4.1)."""
+    try:
+        return repository.listar_viagens()
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+
+@router.delete(
+    "/viagens/{id_viagem}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(requer_permissao(Permissao.AGENDAR))],
+)
+def excluir_viagem(id_viagem: int) -> None:
+    """Remove uma viagem agendada (Agendar Viagem, secao 4.1)."""
+    try:
+        removido = repository.excluir_viagem(id_viagem)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if not removido:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Viagem nao encontrada."
+        )

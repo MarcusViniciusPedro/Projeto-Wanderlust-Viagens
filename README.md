@@ -250,8 +250,9 @@ HTTP 503):
 .venv/bin/pytest -q
 ```
 
-A suite tem **89 testes** cobrindo a logica de negocio (orcamento,
+A suite tem **117 testes** cobrindo a logica de negocio (orcamento,
 recomendacao, agregacao de feedback, autenticacao/2FA, autorizacao por papel,
+camada de authz HTTP, CRUD do Administrador (catalogo/viagens/contas),
 maquina de estados de pagamento, busca, e-mail, estatisticas, configuracao,
 CORS e diagnostico de conexao com o banco).
 Os testes unitarios **nao exigem um SQL Server vivo**.
@@ -323,6 +324,48 @@ componente de reputacao da recomendacao.
 | RF8  | Feedback agregado por IA          | `app/recomendacao/service.py:agregar_feedback`; endpoint `POST /recomendacao/feedback`; trigger `tr_avaliacao_atualiza_ia_feedback` + tabela `IA_Feedback`. |
 | RF9  | Visualizacao 3D / Street View     | `app/integracoes/streetview.py` + `app/catalogo/router.py:streetview_destino`. |
 | RF10 | Estatistica de turistas por destino | `app/estatisticas/service.py:agregar_turistas_por_mes` + `router.py`; view `vw_turistas_por_destino_ano` (`sql/04_programmability.sql`). |
+
+### Autorizacao por papel nas rotas (secao 4.1)
+
+A matriz de permissoes pura esta em `app/core/authz.py` e e aplicada no HTTP
+pela camada `app/core/deps.py` (`requer_autenticacao`, `requer_papel`,
+`requer_permissao`). Rotas protegidas respondem **401** sem token (ou com token
+invalido) e **403** quando o papel autenticado nao tem a permissao exigida.
+
+As rotas de CRUD do Administrador (secao 4.1) e a permissao exigida por cada
+grupo:
+
+| Metodo + rota                                   | Capacidade (4.1)   | Permissao exigida     |
+|-------------------------------------------------|--------------------|-----------------------|
+| `POST /catalogo/pacotes`                        | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `PUT /catalogo/pacotes/{id_pacote}`             | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `DELETE /catalogo/pacotes/{id_pacote}`          | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `POST /catalogo/destinos`                       | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `GET /catalogo/destinos/{id_destino}`           | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `PUT /catalogo/destinos/{id_destino}`           | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `DELETE /catalogo/destinos/{id_destino}`        | Gerenciar Catalogo | `gerenciar_catalogo`  |
+| `POST /catalogo/viagens`                        | Agendar Viagem     | `agendar`             |
+| `GET /catalogo/viagens`                         | Agendar Viagem     | `agendar`             |
+| `DELETE /catalogo/viagens/{id_viagem}`          | Agendar Viagem     | `agendar`             |
+| `GET /auth/admin/contas`                        | Gerenciar Contas   | `gerenciar_contas`    |
+| `PATCH /auth/admin/contas/{id_passageiro}/status` | Gerenciar Contas | `gerenciar_contas`    |
+| `DELETE /auth/admin/contas/{id_passageiro}`     | Gerenciar Contas   | `gerenciar_contas`    |
+
+As rotas `GET /catalogo/pacotes` (RF3) e `GET /catalogo/destinos/{id}/streetview`
+(RF9) continuam **publicas** (sem gate). As rotas DB-backed respondem **503**
+sem SQL Server configurado e **404** para id inexistente.
+
+**Gerenciar Contas e LGPD/RNF3.** O admin modera contas mas **nao le nem edita
+dados pessoais**: as respostas (`ContaAdminSaida`) trazem apenas
+`id_passageiro`, `nome`, `email`, `papel` e `status` (sem `cpf`, `senha`, data de
+nascimento, etc.). O status usa a nova coluna `Usuario.status`
+(`Ativo`/`Banido`/`Denunciado`, com `CHECK` e `DEFAULT 'Ativo'` em
+`sql/01_schema.sql`), que suporta banir/denunciar/reativar via `PATCH`. O
+`DELETE` de conta e um **soft delete / anonimizacao** (status `Banido` + campos
+pessoais anonimizados), nao um hard delete: as FKs de `dbo.Venda` sao
+`ON DELETE NO ACTION`, entao apagar fisicamente um `Usuario` com vendas
+violaria as FKs e destruiria o historico financeiro. O soft delete preserva a
+integridade referencial e alinha-se a LGPD.
 
 ### Requisitos nao funcionais (RNF1..RNF6)
 

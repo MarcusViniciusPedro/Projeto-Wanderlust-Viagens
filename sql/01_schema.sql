@@ -42,10 +42,12 @@ CREATE TABLE Usuario (
     email           NVARCHAR(254) NULL,
     telefone        NVARCHAR(20) NULL,
     papel           NVARCHAR(20) NOT NULL DEFAULT ('Turista'),
+    status          NVARCHAR(20) NOT NULL DEFAULT ('Ativo'),
     PRIMARY KEY (id_passageiro),
     UNIQUE (cpf),
     UNIQUE (email),
-    CHECK (papel IN ('Turista', 'Agente', 'Administrador'))
+    CHECK (papel IN ('Turista', 'Agente', 'Administrador')),
+    CHECK (status IN ('Ativo', 'Banido', 'Denunciado'))
 )
 
 -- Credencial (1:1 com Usuario) - dados de autenticacao isolados do perfil.

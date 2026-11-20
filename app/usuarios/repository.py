@@ -8,13 +8,18 @@ forma que os testes nao dependem deste modulo nem de um DB vivo.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from app.core.authz import Papel
 from app.core.config import Settings
 from app.core.security import gerar_segredo_totp, hash_senha
 from app.db.session import get_connection
-from app.usuarios.schemas import UsuarioCadastro, UsuarioSaida
+from app.usuarios.schemas import (
+    ContaAdminSaida,
+    StatusConta,
+    UsuarioCadastro,
+    UsuarioSaida,
+)
 from app.usuarios.service import CredencialUsuario
 
 
@@ -100,3 +105,145 @@ def buscar_credencial_por_email(
         telefone=linha[5],
         two_factor=bool(linha[6]),
     )
+
+
+# ---------------------------------------------------------------------------
+# Gerenciar Contas (Administrador, secao 4.1 / RNF3 / LGPD).
+# As leituras abaixo projetam SOMENTE campos nao sensiveis (id, nome, email,
+# papel, status). cpf, senha, data de nascimento, cep e telefone NUNCA sao
+# retornados aqui: o admin modera contas, nao le/edita dados pessoais.
+# ---------------------------------------------------------------------------
+
+
+def listar_contas(settings: Optional[Settings] = None) -> List[ContaAdminSaida]:
+    """Lista contas para moderacao, sem dados pessoais sensiveis (RNF3)."""
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id_passageiro, nome, email, papel, status
+            FROM dbo.Usuario
+            ORDER BY id_passageiro
+            """
+        )
+        linhas = cursor.fetchall()
+    finally:
+        conn.close()
+
+    return [
+        ContaAdminSaida(
+            id_passageiro=linha[0],
+            nome=linha[1],
+            email=linha[2],
+            papel=Papel(linha[3]),
+            status=StatusConta(linha[4]),
+        )
+        for linha in linhas
+    ]
+
+
+def buscar_conta(
+    id_passageiro: int, settings: Optional[Settings] = None
+) -> Optional[ContaAdminSaida]:
+    """Carrega uma conta (visao de moderacao) pelo id, ou None se nao existir."""
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id_passageiro, nome, email, papel, status
+            FROM dbo.Usuario
+            WHERE id_passageiro = %s
+            """,
+            (id_passageiro,),
+        )
+        linha = cursor.fetchone()
+    finally:
+        conn.close()
+
+    if linha is None:
+        return None
+    return ContaAdminSaida(
+        id_passageiro=linha[0],
+        nome=linha[1],
+        email=linha[2],
+        papel=Papel(linha[3]),
+        status=StatusConta(linha[4]),
+    )
+
+
+def alterar_status_conta(
+    id_passageiro: int,
+    novo_status: StatusConta,
+    settings: Optional[Settings] = None,
+) -> Optional[ContaAdminSaida]:
+    """Altera o status de uma conta (banir/denunciar/reativar).
+
+    Retorna a visao atualizada da conta ou None quando o id nao existe.
+    """
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE dbo.Usuario
+            SET status = %s
+            WHERE id_passageiro = %s
+            """,
+            (novo_status.value, id_passageiro),
+        )
+        afetadas = cursor.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+
+    if afetadas == 0:
+        return None
+    return buscar_conta(id_passageiro, settings)
+
+
+def excluir_conta(
+    id_passageiro: int, settings: Optional[Settings] = None
+) -> Optional[ContaAdminSaida]:
+    """Apaga uma conta via SOFT DELETE (anonimizacao), alinhado a LGPD/RNF3.
+
+    As FKs de dbo.Venda para Conta_turista/Conta_colaborador usam ON DELETE
+    NO ACTION; um hard delete de um Usuario com vendas violaria as FKs e
+    destruiria o historico financeiro. Em vez disso, a conta e marcada como
+    'Banido' (status terminal) e os campos pessoais sao anonimizados (nome,
+    email, cpf, cep, telefone, nome_social, pronome), preservando a integridade
+    referencial das vendas. Retorna a visao da conta anonimizada ou None quando
+    o id nao existe.
+    """
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE dbo.Usuario
+            SET status = %s,
+                nome = %s,
+                nome_social = NULL,
+                pronome = NULL,
+                email = NULL,
+                telefone = NULL,
+                cep = NULL,
+                cpf = %s
+            WHERE id_passageiro = %s
+            """,
+            (
+                StatusConta.BANIDO.value,
+                "Conta removida",
+                f"removido-{id_passageiro}",
+                id_passageiro,
+            ),
+        )
+        afetadas = cursor.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+
+    if afetadas == 0:
+        return None
+    return buscar_conta(id_passageiro, settings)
