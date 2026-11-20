@@ -114,6 +114,8 @@ def test_fluxo_2fa_completo_emite_jwt(
     corpo = resp.json()
     assert corpo["access_token"]
     assert corpo["papel"] == Papel.TURISTA.value
+    # O id do usuario logado volta na resposta (front usa como fk_conta_turista).
+    assert corpo["id_passageiro"] == 1
 
 
 def test_2fa_codigo_errado_401(

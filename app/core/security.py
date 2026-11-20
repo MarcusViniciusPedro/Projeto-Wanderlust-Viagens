@@ -64,8 +64,13 @@ def criar_token_acesso(
     papel: str,
     settings: Optional[Settings] = None,
     expira_em_minutos: Optional[int] = None,
+    id_usuario: Optional[int] = None,
 ) -> str:
-    """Emite um JWT assinado contendo ``sub`` (usuario) e ``papel``."""
+    """Emite um JWT assinado contendo ``sub`` (usuario) e ``papel``.
+
+    Quando ``id_usuario`` e informado, inclui a claim ``id`` com o identificador
+    do usuario (usada pelo front para vincular a venda ao turista logado).
+    """
     settings = settings or get_settings()
     minutos = (
         expira_em_minutos
@@ -79,6 +84,8 @@ def criar_token_acesso(
         "iat": agora,
         "exp": agora + timedelta(minutes=minutos),
     }
+    if id_usuario is not None:
+        payload["id"] = id_usuario
     return jwt.encode(payload, _jwt_secret(settings), algorithm=settings.jwt_algorithm)
 
 

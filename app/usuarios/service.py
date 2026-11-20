@@ -173,4 +173,5 @@ def concluir_login(
         subject=credencial.email,
         papel=credencial.papel.value,
         settings=settings,
+        id_usuario=credencial.id_usuario,
     )

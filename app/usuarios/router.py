@@ -111,5 +111,9 @@ def verificar_2fa(dados: Verificar2FARequest) -> TokenResposta:
 
     from app.core.security import decodificar_token
 
-    papel = decodificar_token(token)["papel"]
-    return TokenResposta(access_token=token, papel=papel)
+    claims = decodificar_token(token)
+    return TokenResposta(
+        access_token=token,
+        papel=claims["papel"],
+        id_passageiro=claims.get("id"),
+    )

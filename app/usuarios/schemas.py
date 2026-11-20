@@ -100,3 +100,6 @@ class TokenResposta(BaseModel):
     access_token: str
     token_type: str = "bearer"
     papel: Papel
+    # Id do usuario logado (claim ``id`` do JWT); usado pelo front para vincular
+    # a venda ao turista. Opcional para compatibilidade com tokens antigos.
+    id_passageiro: Optional[int] = None
