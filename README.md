@@ -250,9 +250,10 @@ HTTP 503):
 .venv/bin/pytest -q
 ```
 
-A suite tem **117 testes** cobrindo a logica de negocio (orcamento,
+A suite tem **134 testes** cobrindo a logica de negocio (orcamento,
 recomendacao, agregacao de feedback, autenticacao/2FA, autorizacao por papel,
 camada de authz HTTP, CRUD do Administrador (catalogo/viagens/contas),
+self-service do Cliente (conta e compras proprias),
 maquina de estados de pagamento, busca, e-mail, estatisticas, configuracao,
 CORS e diagnostico de conexao com o banco).
 Os testes unitarios **nao exigem um SQL Server vivo**.
@@ -366,6 +367,41 @@ pessoais anonimizados), nao um hard delete: as FKs de `dbo.Venda` sao
 `ON DELETE NO ACTION`, entao apagar fisicamente um `Usuario` com vendas
 violaria as FKs e destruiria o historico financeiro. O soft delete preserva a
 integridade referencial e alinha-se a LGPD.
+
+### Self-service do Cliente/Turista (conta e compras proprias)
+
+O turista autenticado administra a **propria** conta e as **proprias** compras.
+Todas as rotas exigem apenas `requer_autenticacao` e operam **sempre** sobre o
+`id_passageiro` do JWT (claim `id`), nunca sobre um id vindo do path, de modo
+que um cliente so toca os proprios recursos. Token sem a claim `id` (muito
+antigo) responde **401** com mensagem pedindo novo login.
+
+| Metodo + rota                          | Recurso                | Autorizacao / posse |
+|----------------------------------------|------------------------|---------------------|
+| `GET /auth/me`                         | Proprio perfil         | autenticado; id do JWT |
+| `PUT /auth/me`                         | Proprio perfil         | autenticado; id do JWT; so campos editaveis |
+| `DELETE /auth/me`                      | Propria conta          | autenticado; id do JWT; soft delete/anonimizacao |
+| `GET /vendas/minhas`                   | Proprias compras       | autenticado; filtra por `fk_conta_turista` = id do JWT |
+| `POST /vendas/minhas`                  | Criar compra propria   | autenticado; vincula `fk_conta_turista` = id do JWT |
+| `GET /vendas/{id_venda}`               | Uma compra propria     | autenticado; **404** se nao existe, **403** se de outro turista |
+| `POST /vendas/minhas/{id_venda}/cancelar` | Cancelar compra propria | autenticado; **404**/**403** por posse; reusa a maquina de estados |
+
+**Nao escalar privilegio (RNF3/LGPD).** O `PUT /auth/me` usa o schema
+`UsuarioAtualizar`, que expoe **apenas** `nome`, `nome_social`, `pronome`,
+`cep`, `email` e `telefone`. Os campos `papel`, `status` e `cpf` **nao sao
+expostos** no schema (defense-in-depth): mesmo que o cliente os envie no corpo,
+sao ignorados, entao o turista nao consegue se promover a Administrador nem
+alterar o proprio estado de moderacao ou identidade por esta rota.
+
+**Compras e maquina de estados.** `POST /vendas/minhas` cria a compra no estado
+`Pendente` vinculada ao turista do token; `POST /vendas/minhas/{id}/cancelar`
+reutiliza a mesma maquina de estados de `app/vendas/service.py` (transicao
+`Pendente -> Cancelado`) com checagem de posse, **sem duplicar** a logica de
+pagamento. A baixa (`pagar`) e o estorno (`reembolsar`) seguem as rotas
+operacionais `POST /vendas/{id}/pagar` e `POST /vendas/{id}/reembolsar`. A
+exclusao de conta via `DELETE /auth/me` segue a **mesma politica** da exclusao
+administrativa (soft delete/anonimizacao), pelas mesmas FKs `ON DELETE NO
+ACTION` de `dbo.Venda`.
 
 ### Requisitos nao funcionais (RNF1..RNF6)
 

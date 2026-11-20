@@ -17,7 +17,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.authz import Permissao
-from app.core.deps import requer_permissao
+from app.core.deps import UsuarioAtual, requer_autenticacao, requer_permissao
 from app.db.session import DatabaseNotConfiguredError
 from app.integracoes.sms import default_sms_sender
 from app.usuarios import repository
@@ -27,6 +27,7 @@ from app.usuarios.schemas import (
     LoginDesafioResposta,
     LoginRequest,
     TokenResposta,
+    UsuarioAtualizar,
     UsuarioCadastro,
     UsuarioSaida,
     Verificar2FARequest,
@@ -123,6 +124,100 @@ def verificar_2fa(dados: Verificar2FARequest) -> TokenResposta:
         papel=claims["papel"],
         id_passageiro=claims.get("id"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Self-service da PROPRIA conta do turista (FEAT-003).
+# Protegido por Depends(requer_autenticacao) e operando SEMPRE sobre o
+# ``id_passageiro`` do JWT (nunca um id vindo do path/corpo), de modo que o
+# cliente so toca a propria conta.
+# ---------------------------------------------------------------------------
+
+
+def _id_do_token(usuario_atual: UsuarioAtual) -> int:
+    """Extrai o id_passageiro do JWT ou levanta 401 para tokens antigos.
+
+    Tokens emitidos antes da claim ``id`` nao identificam o passageiro; sem
+    isso nao e possivel resolver "a propria conta", entao exigimos novo login.
+    """
+    if usuario_atual.id_passageiro is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=(
+                "Token sem identificacao do passageiro (claim 'id'). "
+                "Faca login novamente."
+            ),
+        )
+    return usuario_atual.id_passageiro
+
+
+@router.get("/me", response_model=UsuarioSaida)
+def ler_perfil(
+    usuario_atual: UsuarioAtual = Depends(requer_autenticacao),
+) -> UsuarioSaida:
+    """Retorna o perfil do PROPRIO usuario logado (self-service).
+
+    Opera sobre o id_passageiro do JWT; o cliente nunca informa um id.
+    """
+    id_passageiro = _id_do_token(usuario_atual)
+    try:
+        perfil = repository.buscar_usuario_por_id(id_passageiro)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if perfil is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada."
+        )
+    return perfil
+
+
+@router.put("/me", response_model=UsuarioSaida)
+def atualizar_perfil(
+    dados: UsuarioAtualizar,
+    usuario_atual: UsuarioAtual = Depends(requer_autenticacao),
+) -> UsuarioSaida:
+    """Atualiza o PROPRIO perfil do usuario logado (self-service).
+
+    O schema ``UsuarioAtualizar`` nao expoe papel/status/cpf, entao o cliente
+    nao consegue escalar privilegio nem alterar a identidade por esta rota
+    (defense-in-depth, RNF3/LGPD). Opera sobre o id_passageiro do JWT.
+    """
+    id_passageiro = _id_do_token(usuario_atual)
+    try:
+        perfil = repository.atualizar_usuario(id_passageiro, dados)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if perfil is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada."
+        )
+    return perfil
+
+
+@router.delete("/me", response_model=UsuarioSaida)
+def excluir_perfil(
+    usuario_atual: UsuarioAtual = Depends(requer_autenticacao),
+) -> UsuarioSaida:
+    """Encerra a PROPRIA conta via SOFT DELETE/anonimizacao (self-service).
+
+    Mesma politica da exclusao administrativa (FEAT-002): as FKs de dbo.Venda
+    sao ON DELETE NO ACTION, entao a conta e marcada como 'Banido' e tem os
+    dados pessoais anonimizados, preservando o historico de vendas e alinhando
+    a LGPD. Opera sobre o id_passageiro do JWT.
+    """
+    id_passageiro = _id_do_token(usuario_atual)
+    try:
+        perfil = repository.excluir_usuario(id_passageiro)
+    except DatabaseNotConfiguredError as exc:
+        raise _erro_db_indisponivel() from exc
+
+    if perfil is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Conta nao encontrada."
+        )
+    return perfil
 
 
 # ---------------------------------------------------------------------------

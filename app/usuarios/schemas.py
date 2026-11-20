@@ -23,6 +23,7 @@ __all__ = [
     "Papel",
     "UsuarioCadastro",
     "UsuarioSaida",
+    "UsuarioAtualizar",
     "LoginRequest",
     "LoginDesafioResposta",
     "Verificar2FARequest",
@@ -64,6 +65,24 @@ class UsuarioSaida(BaseModel):
     def nome_exibicao(self) -> str:
         """Nome a exibir: prioriza o nome social quando informado (RNF1)."""
         return self.nome_social or self.nome
+
+
+class UsuarioAtualizar(BaseModel):
+    """Campos que o PROPRIO turista pode editar na sua conta (self-service).
+
+    Defense-in-depth (RNF3/LGPD): este schema NAO expoe ``papel`` nem
+    ``status`` (o cliente nao pode escalar privilegio nem mudar o estado de
+    moderacao da propria conta) e tambem nao expoe ``cpf`` nem
+    ``data_nascimento`` (identidade, nao editavel por self-service). Todos os
+    campos sao opcionais: a atualizacao e parcial e so aplica o que foi enviado.
+    """
+
+    nome: Optional[str] = Field(default=None, min_length=1, max_length=150)
+    nome_social: Optional[str] = Field(default=None, max_length=150)
+    pronome: Optional[str] = Field(default=None, max_length=30)
+    cep: Optional[str] = Field(default=None, max_length=9)
+    email: Optional[str] = Field(default=None, max_length=254, pattern=_EMAIL_PATTERN)
+    telefone: Optional[str] = Field(default=None, max_length=20)
 
 
 class LoginRequest(BaseModel):

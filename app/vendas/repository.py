@@ -51,6 +51,77 @@ def buscar_venda(
     )
 
 
+def buscar_venda_com_dono(
+    id_venda: int, settings: _Optional[Settings] = None
+) -> "_Optional[tuple[Venda, int]]":
+    """Carrega a venda e o id do turista dono (fk_conta_turista).
+
+    Usada na checagem de posse do self-service do cliente: o router compara o
+    dono retornado com o id_passageiro do JWT. Retorna ``None`` se a venda nao
+    existir, caso contrario ``(Venda, fk_conta_turista)``.
+    """
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id_venda, valor_total, forma_pagamento, status_pagamento,
+                   fk_conta_turista
+            FROM dbo.Venda
+            WHERE id_venda = %s
+            """,
+            (id_venda,),
+        )
+        linha = cursor.fetchone()
+    finally:
+        conn.close()
+
+    if linha is None:
+        return None
+    venda = Venda(
+        id_venda=int(linha[0]),
+        valor_total=float(linha[1]),
+        forma_pagamento=FormaPagamento(linha[2]),
+        status_pagamento=StatusPagamento(linha[3]),
+    )
+    return venda, int(linha[4])
+
+
+def listar_vendas_por_turista(
+    fk_conta_turista: int, settings: _Optional[Settings] = None
+) -> "list[Venda]":
+    """Lista as vendas de um turista (as PROPRIAS compras do cliente logado).
+
+    O ``fk_conta_turista`` vem do id_passageiro do JWT, nao de um parametro
+    arbitrario, garantindo que o cliente so veja as proprias compras.
+    """
+    conn = get_connection(settings)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id_venda, valor_total, forma_pagamento, status_pagamento
+            FROM dbo.Venda
+            WHERE fk_conta_turista = %s
+            ORDER BY id_venda DESC
+            """,
+            (fk_conta_turista,),
+        )
+        linhas = cursor.fetchall()
+    finally:
+        conn.close()
+
+    return [
+        Venda(
+            id_venda=int(linha[0]),
+            valor_total=float(linha[1]),
+            forma_pagamento=FormaPagamento(linha[2]),
+            status_pagamento=StatusPagamento(linha[3]),
+        )
+        for linha in linhas
+    ]
+
+
 def registrar_venda(
     fk_conta_turista: int,
     fk_pacote: int,
