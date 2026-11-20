@@ -147,41 +147,6 @@ def buscar_usuario_por_id(
     )
 
 
-def _carregar_perfil_editavel(
-    id_passageiro: int, settings: Optional[Settings] = None
-) -> Optional[dict]:
-    """Le as seis colunas editaveis atuais (inclui ``cep``, que ``UsuarioSaida``
-    nao expoe) para que o UPDATE COMPLETO de sp_atualizar_usuario preserve os
-    valores das colunas nao enviadas numa atualizacao parcial. Retorna ``None``
-    quando o id nao existe.
-    """
-    conn = get_connection(settings)
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT nome, nome_social, pronome, cep, email, telefone
-            FROM dbo.Usuario
-            WHERE id_passageiro = %s
-            """,
-            (id_passageiro,),
-        )
-        linha = cursor.fetchone()
-    finally:
-        conn.close()
-
-    if linha is None:
-        return None
-    return {
-        "nome": linha[0],
-        "nome_social": linha[1],
-        "pronome": linha[2],
-        "cep": linha[3],
-        "email": linha[4],
-        "telefone": linha[5],
-    }
-
-
 def atualizar_usuario(
     id_passageiro: int,
     dados: UsuarioAtualizar,
@@ -189,11 +154,17 @@ def atualizar_usuario(
 ) -> Optional[UsuarioSaida]:
     """Atualiza os campos editaveis do proprio perfil (atualizacao parcial).
 
-    So monta o UPDATE com os campos efetivamente enviados (nao-None). O schema
-    ``UsuarioAtualizar`` nao expoe papel/status/cpf, entao mesmo que o cliente
-    tente injeta-los no corpo, eles sao ignorados (defense-in-depth, RNF3). Sem
-    nenhum campo para atualizar, apenas devolve o perfil atual. Retorna None
-    quando o id nao existe.
+    So envia ao banco os campos efetivamente informados (presentes E nao-None).
+    O schema ``UsuarioAtualizar`` nao expoe papel/status/cpf, entao mesmo que o
+    cliente tente injeta-los no corpo, eles sao ignorados (defense-in-depth,
+    RNF3). Sem nenhum campo para atualizar, apenas devolve o perfil atual.
+    Retorna None quando o id nao existe.
+
+    A atualizacao parcial e ATOMICA no banco: a procedure
+    ``dbo.sp_atualizar_usuario`` recebe NULL ("nao alterar") para as colunas
+    nao enviadas e aplica ``COALESCE(@param, coluna)`` num unico UPDATE. Nao ha
+    leitura previa do perfil, o que elimina o read-modify-write em conexoes
+    separadas que abria janela de lost-update entre atualizacoes concorrentes.
     """
     atualizacoes = dados.model_dump(exclude_unset=True, exclude_none=True)
     if not atualizacoes:
@@ -213,23 +184,17 @@ def atualizar_usuario(
     if not pares:
         return buscar_usuario_por_id(id_passageiro, settings)
 
-    # A escrita vive na procedure dbo.sp_atualizar_usuario, que faz um UPDATE
-    # COMPLETO das seis colunas editaveis. Como a atualizacao aqui e PARCIAL,
-    # carregamos o perfil atual para preencher as colunas nao enviadas antes do
-    # EXEC. A lista branca (defense-in-depth, RNF3) continua no Python; o banco
-    # so recebe os valores ja decididos.
-    atual = _carregar_perfil_editavel(id_passageiro, settings)
-    if atual is None:
-        return None
-
+    # Envia NULL para as colunas nao enviadas; a procedure as preserva via
+    # COALESCE. Assim o UPDATE das colunas do usuario e um unico statement
+    # atomico, sem depender de nenhum valor lido antes em outra conexao.
     valores = (
         id_passageiro,
-        pares.get("nome", atual["nome"]),
-        pares.get("nome_social", atual["nome_social"]),
-        pares.get("pronome", atual["pronome"]),
-        pares.get("cep", atual["cep"]),
-        pares.get("email", atual["email"]),
-        pares.get("telefone", atual["telefone"]),
+        pares.get("nome"),
+        pares.get("nome_social"),
+        pares.get("pronome"),
+        pares.get("cep"),
+        pares.get("email"),
+        pares.get("telefone"),
     )
 
     conn = get_connection(settings)
@@ -257,6 +222,9 @@ def atualizar_usuario(
 
     if afetadas == 0:
         return None
+    # Leitura APOS a escrita so para montar a resposta (UsuarioSaida). Isso nao
+    # e um read-modify-write: nenhum valor lido aqui participa do UPDATE, entao
+    # nao reintroduz a janela de lost-update.
     return buscar_usuario_por_id(id_passageiro, settings)
 
 

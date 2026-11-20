@@ -148,18 +148,28 @@ END;
 GO
 
 -- sp_atualizar_usuario: atualiza os campos editaveis do PROPRIO perfil
--- (self-service, RF "Alterar os dados de cadastro"). A atualizacao parcial e
--- a lista branca de colunas editaveis (nome, nome_social, pronome, cep, email,
--- telefone) ficam em Python (app/usuarios/repository.py), que carrega o perfil
--- atual para preencher as colunas nao enviadas antes de chamar esta procedure.
--- Assim a defesa em profundidade (RNF3: papel/status/cpf/data_nascimento NAO
--- sao editaveis) permanece no Python e o UPDATE fica no banco. A procedure faz
--- um UPDATE completo das seis colunas e devolve @@ROWCOUNT (linhas afetadas)
--- como unico resultado, pois sob SET NOCOUNT ON o rowcount do driver pymssql
--- nao e confiavel.
+-- (self-service, RF "Alterar os dados de cadastro"). A atualizacao e PARCIAL e
+-- ATOMICA: todas as seis colunas editaveis (nome, nome_social, pronome, cep,
+-- email, telefone) sao parametros OPCIONAIS que default para NULL, onde NULL
+-- significa "nao alterar". Cada coluna usa COALESCE(@param, coluna), entao um
+-- unico UPDATE altera somente os campos efetivamente enviados, sem precisar de
+-- uma leitura previa do perfil (elimina o read-modify-write em conexoes
+-- separadas que abria janela de lost-update em atualizacoes concorrentes).
+--
+-- Semantica NULL = "nao alterar": o repositorio Python envia apenas campos
+-- presentes E nao-None (model_dump(exclude_unset=True, exclude_none=True)),
+-- passando NULL para as colunas nao enviadas. Como limpar um campo (set NULL)
+-- nunca foi suportado por este caminho, COALESCE(@param, coluna) e exatamente
+-- correto e nao muda o comportamento observavel.
+--
+-- A defesa em profundidade (RNF3: papel/status/cpf/data_nascimento NAO sao
+-- editaveis) continua no Python (lista branca de colunas) e no schema
+-- UsuarioAtualizar. A procedure devolve @@ROWCOUNT (linhas afetadas) como unico
+-- resultado, lido via fetchone()[0] no Python (0 -> id inexistente -> None),
+-- pois sob SET NOCOUNT ON o rowcount do driver pymssql nao e confiavel.
 CREATE PROCEDURE sp_atualizar_usuario
     @id_passageiro INT,
-    @nome          NVARCHAR(150),
+    @nome          NVARCHAR(150) = NULL,
     @nome_social   NVARCHAR(150) = NULL,
     @pronome       NVARCHAR(30)  = NULL,
     @cep           NVARCHAR(9)   = NULL,
@@ -169,13 +179,15 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- UPDATE unico e atomico: COALESCE preserva a coluna quando o parametro
+    -- chega NULL ("nao alterar"), dispensando qualquer leitura previa.
     UPDATE dbo.Usuario
-    SET nome        = @nome,
-        nome_social = @nome_social,
-        pronome     = @pronome,
-        cep         = @cep,
-        email       = @email,
-        telefone    = @telefone
+    SET nome        = COALESCE(@nome, nome),
+        nome_social = COALESCE(@nome_social, nome_social),
+        pronome     = COALESCE(@pronome, pronome),
+        cep         = COALESCE(@cep, cep),
+        email       = COALESCE(@email, email),
+        telefone    = COALESCE(@telefone, telefone)
     WHERE id_passageiro = @id_passageiro;
 
     SELECT @@ROWCOUNT;  -- linhas afetadas, lidas via fetchone()[0] no Python

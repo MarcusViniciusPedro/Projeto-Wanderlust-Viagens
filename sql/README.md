@@ -84,9 +84,10 @@ As operações CRUD de escrita/leitura vivem em stored procedures em
 `pymssql`), nunca por SQL inline. Além de `sp_registrar_venda`, as sete
 operações de cadastro pedidas são cobertas por procedures:
 
-- Usuário: `sp_atualizar_usuario` (alterar dados de cadastro),
-  `sp_excluir_usuario` (deletar conta, soft delete/anonimização LGPD) e
-  `sp_listar_usuarios` (consultar todos os usuários).
+- Usuário: `sp_atualizar_usuario` (alterar dados de cadastro; atualização
+  parcial e atômica, ver abaixo), `sp_excluir_usuario` (deletar conta, soft
+  delete/anonimização LGPD) e `sp_listar_usuarios` (consultar todos os
+  usuários).
 - Pacote: `sp_criar_pacote` (cadastrar), `sp_atualizar_pacote` (alterar),
   `sp_excluir_pacote` (deletar, hard delete) e `sp_listar_pacotes` (consultar
   todos; a filtragem RF3 permanece em Python).
@@ -95,6 +96,17 @@ Sob `SET NOCOUNT ON` o `cursor.rowcount` do `pymssql` não é confiável, então
 procedures de UPDATE/DELETE terminam com `SELECT @@ROWCOUNT` e as de INSERT com
 `SELECT CAST(SCOPE_IDENTITY() AS INT)`; o Python lê o resultado via
 `fetchone()[0]`.
+
+`sp_atualizar_usuario` faz uma atualização **parcial e atômica**: as seis
+colunas editáveis (`nome`, `nome_social`, `pronome`, `cep`, `email`,
+`telefone`) são parâmetros opcionais que default para `NULL` (`NULL` = "não
+alterar") e cada coluna usa `COALESCE(@param, coluna)` num único `UPDATE`. O
+backend envia apenas os campos presentes e não-`None`
+(`model_dump(exclude_unset=True, exclude_none=True)`) e `NULL` para os demais,
+sem nenhuma leitura prévia do perfil. Isso elimina o read-modify-write em
+conexões separadas que abria janela de lost-update entre atualizações
+concorrentes. Limpar um campo (defini-lo como `NULL`) não é suportado por este
+caminho, então `COALESCE` é exatamente correto.
 
 ## Dicionário de dados
 

@@ -88,21 +88,19 @@ def _texto_execs(cursor: FakeCursor) -> str:
 # --------------------------------------------------------------------------
 
 
-def test_atualizar_usuario_exec_procedure_e_merge_parcial(monkeypatch):
-    # Perfil atual tem cep e telefone que NAO estao no corpo; devem ser
-    # preservados (merge) e enviados no EXEC.
+def test_atualizar_usuario_exec_procedure_atualizacao_parcial(monkeypatch):
+    # Atualizacao parcial ATOMICA: um unico EXEC, sem leitura previa do perfil.
+    # Os campos nao enviados viajam como NULL ("nao alterar"); a procedure os
+    # preserva via COALESCE. A primeira (e unica) leitura do cursor e o
+    # @@ROWCOUNT da procedure.
     cursor = FakeCursor(
-        fetchone_seq=[
-            # _carregar_perfil_editavel (SELECT das 6 colunas)
-            ("Ana", "Aninha", "ela/dela", "01000-000", "ana@old.com", "11999"),
-            # @@ROWCOUNT da procedure
-            (1,),
-        ],
+        fetchone_seq=[(1,)],  # @@ROWCOUNT da procedure
         fetchall_seq=[],
     )
     conn = _instalar_conn(monkeypatch, cursor)
 
-    # buscar_usuario_por_id (chamado no fim) retorna o perfil atualizado.
+    # buscar_usuario_por_id (chamado no fim, read-after-write) retorna o perfil
+    # atualizado para montar a resposta.
     def fake_buscar(id_passageiro, settings=None):
         from app.usuarios.schemas import UsuarioSaida
 
@@ -120,60 +118,89 @@ def test_atualizar_usuario_exec_procedure_e_merge_parcial(monkeypatch):
 
     assert saida is not None
     assert saida.nome == "Ana Maria"
-    # Houve um EXEC da procedure de atualizacao.
+    # Houve UM unico EXEC da procedure de atualizacao, sem SELECT de pre-leitura.
     assert "EXEC dbo.sp_atualizar_usuario" in _texto_execs(cursor)
-    # Os parametros do EXEC: id, nome novo, e campos nao enviados preservados.
-    exec_params = cursor.execucoes[1][1]
+    assert len(cursor.execucoes) == 1
+    # O EXEC envia o campo enviado e NULL (nao-alterar) para os demais, deixando
+    # o COALESCE da procedure preservar as colunas nao enviadas no banco.
+    exec_sql, exec_params = cursor.execucoes[0]
+    assert "EXEC dbo.sp_atualizar_usuario" in exec_sql
     assert exec_params == (
         7,
         "Ana Maria",  # enviado
-        "Aninha",  # preservado do perfil atual
-        "ela/dela",  # preservado
-        "01000-000",  # cep preservado (nao exposto em UsuarioSaida)
-        "ana@old.com",  # preservado
-        "11999",  # telefone preservado
+        None,  # nome_social nao enviado -> NULL -> COALESCE preserva
+        None,  # pronome
+        None,  # cep
+        None,  # email
+        None,  # telefone
     )
     assert conn.commits == 1
     assert conn.closed is True
 
 
+def test_atualizar_usuario_multiplos_campos_envia_apenas_enviados(monkeypatch):
+    # Com varios campos enviados, cada um vai na sua posicao e os ausentes
+    # permanecem NULL (nao-alterar).
+    cursor = FakeCursor(fetchone_seq=[(1,)], fetchall_seq=[])
+    _instalar_conn(monkeypatch, cursor)
+
+    from app.usuarios.schemas import UsuarioSaida
+
+    monkeypatch.setattr(
+        repo,
+        "buscar_usuario_por_id",
+        lambda id_passageiro, settings=None: UsuarioSaida(
+            id_passageiro=id_passageiro, nome="Novo", papel=Papel.TURISTA
+        ),
+    )
+
+    dados = UsuarioAtualizar(nome="Novo", telefone="11988887777")
+    repo.atualizar_usuario(7, dados)
+
+    exec_params = cursor.execucoes[0][1]
+    assert exec_params == (7, "Novo", None, None, None, None, "11988887777")
+
+
 def test_atualizar_usuario_zero_linhas_retorna_none(monkeypatch):
     cursor = FakeCursor(
-        fetchone_seq=[
-            ("Ana", None, None, None, "ana@x.com", None),  # perfil atual
-            (0,),  # @@ROWCOUNT = 0 -> ninguem atualizado
-        ],
+        fetchone_seq=[(0,)],  # @@ROWCOUNT = 0 -> id inexistente
         fetchall_seq=[],
     )
     _instalar_conn(monkeypatch, cursor)
 
-    chamadas = {"buscar": 0}
-
-    def fake_buscar(id_passageiro, settings=None):
-        from app.usuarios.schemas import UsuarioSaida
-
-        chamadas["buscar"] += 1
-        return UsuarioSaida(
-            id_passageiro=id_passageiro,
-            nome="Ana",
-            email="ana@x.com",
-            papel=Papel.TURISTA,
-        )
-
-    monkeypatch.setattr(repo, "buscar_usuario_por_id", fake_buscar)
+    # Com 0 linhas afetadas o id nao existe; buscar_usuario_por_id NAO deve ser
+    # chamado (se for, devolveria algo nao-None e o assert de None quebraria).
+    monkeypatch.setattr(
+        repo,
+        "buscar_usuario_por_id",
+        lambda *a, **k: pytest.fail("nao deveria buscar com 0 linhas"),
+    )
 
     saida = repo.atualizar_usuario(7, UsuarioAtualizar(nome="Ana"))
-    assert saida is None  # 0 linhas -> None, mesmo com perfil existente
+    assert saida is None  # 0 linhas -> None
     assert "EXEC dbo.sp_atualizar_usuario" in _texto_execs(cursor)
 
 
-def test_atualizar_usuario_perfil_inexistente_retorna_none(monkeypatch):
-    cursor = FakeCursor(fetchone_seq=[None], fetchall_seq=[])  # perfil nao existe
+def test_atualizar_usuario_sem_campos_devolve_perfil_atual(monkeypatch):
+    # Corpo vazio (nenhum campo enviado): nao executa a procedure, apenas
+    # devolve o perfil atual via buscar_usuario_por_id.
+    cursor = FakeCursor(fetchone_seq=[], fetchall_seq=[])
     _instalar_conn(monkeypatch, cursor)
 
-    saida = repo.atualizar_usuario(999, UsuarioAtualizar(nome="X"))
-    assert saida is None
-    # Nao deve nem chegar a executar a procedure se o perfil nao existe.
+    from app.usuarios.schemas import UsuarioSaida
+
+    monkeypatch.setattr(
+        repo,
+        "buscar_usuario_por_id",
+        lambda id_passageiro, settings=None: UsuarioSaida(
+            id_passageiro=id_passageiro, nome="Ana", papel=Papel.TURISTA
+        ),
+    )
+
+    saida = repo.atualizar_usuario(7, UsuarioAtualizar())
+    assert saida is not None
+    assert saida.nome == "Ana"
+    # Sem campos para atualizar nao ha EXEC da procedure.
     assert "EXEC dbo.sp_atualizar_usuario" not in _texto_execs(cursor)
 
 

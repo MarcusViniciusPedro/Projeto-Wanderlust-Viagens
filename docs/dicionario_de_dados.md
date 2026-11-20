@@ -254,7 +254,7 @@ Feedback agregado pelo AIV por pacote (RF8). Atualizada por trigger.
 | `vw_vendas_detalhadas`                 | View       | Consolida Venda + turista + pacotes (via Obtem).                          |
 | `vw_turistas_por_destino_ano`          | View       | Incidência de turistas por destino e ano (suporte a RF10).               |
 | `sp_registrar_venda`                   | Procedure  | Registra Venda + Obtem e baixa estoque em transação atômica.             |
-| `sp_atualizar_usuario`                 | Procedure  | Atualiza os campos editáveis do próprio perfil (UPDATE + `@@ROWCOUNT`).  |
+| `sp_atualizar_usuario`                 | Procedure  | Atualiza o próprio perfil de forma parcial e atômica (COALESCE por coluna, `NULL` = não alterar) + `@@ROWCOUNT`. |
 | `sp_excluir_usuario`                   | Procedure  | Soft delete/anonimização de conta (LGPD/RNF3), retorna `@@ROWCOUNT`.     |
 | `sp_listar_usuarios`                   | Procedure  | Lista contas para moderação, sem campos pessoais sensíveis (RNF3).       |
 | `sp_criar_pacote`                      | Procedure  | Cadastra um pacote e retorna o id gerado (`SCOPE_IDENTITY`).             |
