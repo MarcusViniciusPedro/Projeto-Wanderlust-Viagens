@@ -50,18 +50,26 @@ function capitalizarTipo(tipo) {
   return tipo.charAt(0).toUpperCase() + tipo.slice(1);
 }
 
-// Identidade visual por tipo de viagem (sem depender de arquivos de imagem):
-// um emoji + cor de fundo representativos. Chave normalizada (minúsculas).
+// Imagem de categoria por tipo de viagem. Tipos com foto usam o arquivo;
+// os demais caem num emoji + cor de fundo. Chave normalizada (minúsculas).
+const IMAGEM_TIPO = {
+  praia: "../imgs/praia.jpg",
+  serra: "../imgs/serra.jpg",
+  cultural: "../imgs/cultural.jpg",
+};
 const VISUAL_TIPO = {
-  praia: { emoji: "🏖️", cor: "#2a9d8f" },
-  serra: { emoji: "⛰️", cor: "#5f7470" },
-  cultural: { emoji: "🏛️", cor: "#8d6e63" },
   relax: { emoji: "🧘", cor: "#5b8c9e" },
   radical: { emoji: "🪂", cor: "#e76f51" },
 };
 
 function visualTipo(tipo) {
-  const v = VISUAL_TIPO[(tipo || "").toLowerCase()] || { emoji: "✈️", cor: "#0d3b66" };
+  const chave = (tipo || "").toLowerCase();
+  const img = IMAGEM_TIPO[chave];
+  if (img) {
+    return `<div class="pacote-imagem pacote-imagem-foto" aria-hidden="true"
+      style="background-image:url('${img}')"></div>`;
+  }
+  const v = VISUAL_TIPO[chave] || { emoji: "✈️", cor: "#0d3b66" };
   return `<div class="pacote-imagem pacote-imagem-tipo" aria-hidden="true"
     style="background-color:${v.cor}"><span>${v.emoji}</span></div>`;
 }

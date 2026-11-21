@@ -114,9 +114,16 @@
 
 /* espaços reservados para as 3 imagens do carrossel de topo;
    troque cada background-image por url("../imgs/slide-N.jpg") */
-.hero-slide-1 { background-color: #0d3b66; }
-.hero-slide-2 { background-color: #14507d; }
-.hero-slide-3 { background-color: #0a2e52; }
+/* imagens dos slides do carrossel; overlay escuro garante leitura do texto */
+.hero-slide-1 {
+    background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url("../imgs/copan.jpg");
+}
+.hero-slide-2 {
+    background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url("../imgs/boituva.jpg");
+}
+.hero-slide-3 {
+    background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url("../imgs/awasi.jpg");
+}
 
 .hero-conteudo {
     padding: 1.5rem;
@@ -401,6 +408,13 @@
 .pacote-imagem-tipo span {
     font-size: 4rem;
     line-height: 1;
+}
+
+/* foto de categoria por tipo (praia/serra/cultural) */
+.pacote-imagem-foto {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .pacote-corpo {

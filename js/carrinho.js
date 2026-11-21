@@ -120,18 +120,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   const local =
     pacote.cidade ? `${pacote.cidade} - ${pacote.estado}` : `Pacote ${pacote.id_pacote}`;
 
-  // Identidade visual por tipo na prévia (mesma lógica da página de pacotes).
-  const VISUAL_TIPO = {
-    praia: { emoji: "🏖️", cor: "#2a9d8f" }, serra: { emoji: "⛰️", cor: "#5f7470" },
-    cultural: { emoji: "🏛️", cor: "#8d6e63" }, relax: { emoji: "🧘", cor: "#5b8c9e" },
-    radical: { emoji: "🪂", cor: "#e76f51" },
+  // Identidade visual por tipo na prévia (foto quando houver; senão emoji+cor).
+  const IMAGEM_TIPO = {
+    praia: "../imgs/praia.jpg", serra: "../imgs/serra.jpg", cultural: "../imgs/cultural.jpg",
   };
-  const vis = VISUAL_TIPO[(pacote.tipo_viagem || "").toLowerCase()] || { emoji: "✈️", cor: "#0d3b66" };
+  const VISUAL_TIPO = {
+    relax: { emoji: "🧘", cor: "#5b8c9e" }, radical: { emoji: "🪂", cor: "#e76f51" },
+  };
+  const chaveTipo = (pacote.tipo_viagem || "").toLowerCase();
   const previaImg = document.querySelector(".previa-imagem");
   if (previaImg) {
-    previaImg.classList.add("pacote-imagem-tipo");
-    previaImg.style.backgroundColor = vis.cor;
-    previaImg.innerHTML = `<span>${vis.emoji}</span>`;
+    if (IMAGEM_TIPO[chaveTipo]) {
+      previaImg.classList.add("pacote-imagem-foto");
+      previaImg.style.backgroundImage = `url('${IMAGEM_TIPO[chaveTipo]}')`;
+    } else {
+      const vis = VISUAL_TIPO[chaveTipo] || { emoji: "✈️", cor: "#0d3b66" };
+      previaImg.classList.add("pacote-imagem-tipo");
+      previaImg.style.backgroundColor = vis.cor;
+      previaImg.innerHTML = `<span>${vis.emoji}</span>`;
+    }
   }
 
   // Prévia do pacote (campos do back: data_inicio/data_fim ISO, estoque, destino).
