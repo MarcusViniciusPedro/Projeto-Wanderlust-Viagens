@@ -67,6 +67,10 @@ function pagarVenda(idVenda) {
   return apiFetch(`/vendas/${idVenda}/pagar`, { method: "POST" });
 }
 
+function cancelarVenda(idVenda) {
+  return apiFetch(`/vendas/${idVenda}/cancelar`, { method: "POST" });
+}
+
 // Monta o detalhamento (linha a linha) de como o total foi obtido.
 function montarDetalhe(dl, p) {
   const fatorDuracao = p.dias > 1 ? 1 + (p.dias - 1) * FATOR_POR_DIA_EXTRA : 1.0;
@@ -146,6 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const confirmarFeedback = document.getElementById("confirmar-feedback");
   const btnConfirmar = document.getElementById("btn-confirmar");
   const btnPagar = document.getElementById("btn-pagar");
+  const btnCancelarVenda = document.getElementById("btn-cancelar-venda");
 
   let totalCalculado = null; // valor oficial vindo do back
   let pedidoAtual = null; // dados do pedido (datas, pessoas, regime, nível)
@@ -289,9 +294,10 @@ document.addEventListener("DOMContentLoaded", () => {
         `Venda nº ${venda.id_venda} criada (${venda.status_pagamento}). Clique em Pagar para concluir.`,
         "ok"
       );
-      // Trava a forma de pagamento e revela o botão Pagar.
+      // Trava a forma de pagamento e revela os botões Pagar e Cancelar.
       for (const campo of formConfirmar.elements) campo.disabled = true;
       btnPagar.hidden = false;
+      btnCancelarVenda.hidden = false;
     } catch (erro) {
       mostrarFeedback(confirmarFeedback, erro.message || "Não foi possível registrar a compra.", "erro");
       btnConfirmar.disabled = false;
@@ -311,10 +317,34 @@ document.addEventListener("DOMContentLoaded", () => {
         "ok"
       );
       btnPagar.hidden = true;
+      btnCancelarVenda.hidden = true;
       localStorage.removeItem("pacote_reservado");
     } catch (erro) {
       mostrarFeedback(confirmarFeedback, erro.message || "Não foi possível concluir o pagamento.", "erro");
       btnPagar.disabled = false;
+    }
+  });
+
+  // Cancela a venda pendente: POST /vendas/{id}/cancelar (Pendente -> Cancelado).
+  btnCancelarVenda.addEventListener("click", async () => {
+    if (!vendaCriada) return;
+    if (!confirm("Cancelar esta compra? A venda ficará como Cancelada.")) return;
+    btnCancelarVenda.disabled = true;
+    confirmarFeedback.hidden = true;
+    try {
+      const venda = await cancelarVenda(vendaCriada);
+      mostrarFeedback(
+        confirmarFeedback,
+        `Compra cancelada. Venda nº ${venda.id_venda}, status: ${venda.status_pagamento}.`,
+        "ok"
+      );
+      btnPagar.hidden = true;
+      btnCancelarVenda.hidden = true;
+      vendaCriada = null;
+      localStorage.removeItem("pacote_reservado");
+    } catch (erro) {
+      mostrarFeedback(confirmarFeedback, erro.message || "Não foi possível cancelar a compra.", "erro");
+      btnCancelarVenda.disabled = false;
     }
   });
 });
