@@ -329,7 +329,6 @@ document.addEventListener("DOMContentLoaded", () => {
             <td>${escapar(d.cidade)}</td>
             <td>${escapar(d.estado)}</td>
             <td>${escapar(d.pais)}</td>
-            <td>${escapar(d.categoria) || "—"}</td>
             <td class="text-nowrap">
               <button class="btn btn-sm btn-outline-primary" data-editar-destino='${JSON.stringify(d)}'>Editar</button>
               <button class="btn btn-sm btn-outline-danger" data-excluir-destino="${d.id_destino}">Excluir</button>
@@ -338,7 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )
         .join("");
       if (!destinos.length) {
-        tabelaDestinos.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Nenhum destino cadastrado.</td></tr>`;
+        tabelaDestinos.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Nenhum destino cadastrado.</td></tr>`;
       }
     } catch (erro) {
       mostrar(destinoFeedback, erro.message || "Não foi possível carregar os destinos.", "erro");
@@ -355,7 +354,6 @@ document.addEventListener("DOMContentLoaded", () => {
       cidade: formDestino.elements["cidade"].value.trim(),
       estado: formDestino.elements["estado"].value.trim(),
       pais: formDestino.elements["pais"].value.trim(),
-      categoria: formDestino.elements["categoria"].value.trim() || null,
       descricao: formDestino.elements["descricao"].value.trim() || null,
     };
     btnSalvarDestino.disabled = true;
@@ -390,7 +388,6 @@ document.addEventListener("DOMContentLoaded", () => {
       formDestino.elements["cidade"].value = d.cidade;
       formDestino.elements["estado"].value = d.estado;
       formDestino.elements["pais"].value = d.pais;
-      formDestino.elements["categoria"].value = d.categoria || "";
       formDestino.elements["descricao"].value = d.descricao || "";
       btnSalvarDestino.textContent = "Salvar alterações";
       btnCancelarDestino.hidden = false;
