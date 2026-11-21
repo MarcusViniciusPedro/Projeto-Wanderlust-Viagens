@@ -21,6 +21,7 @@ function escapar(texto) {
 
 // ---------- API ----------
 const listarPacotes = () => apiFetch("/catalogo/pacotes");
+const listarDestinos = () => apiFetch("/catalogo/destinos");
 const criarPacote = (d) => apiFetch("/catalogo/pacotes", { method: "POST", body: JSON.stringify(d) });
 const atualizarPacote = (id, d) => apiFetch(`/catalogo/pacotes/${id}`, { method: "PUT", body: JSON.stringify(d) });
 const excluirPacote = (id) => apiFetch(`/catalogo/pacotes/${id}`, { method: "DELETE" });
@@ -60,6 +61,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnSalvar = document.getElementById("btn-salvar-pacote");
   const btnCancelar = document.getElementById("btn-cancelar-pacote");
   const campoId = document.getElementById("pacote-id");
+  const selectDestino = document.getElementById("pacote-destino");
+
+  async function carregarDestinos() {
+    try {
+      const destinos = await listarDestinos();
+      for (const d of destinos) {
+        const opt = document.createElement("option");
+        opt.value = d.id_destino;
+        opt.textContent = `${d.cidade} - ${d.estado}`;
+        selectDestino.appendChild(opt);
+      }
+    } catch (erro) {
+      mostrar(pacoteFeedback, erro.message || "Não foi possível carregar os destinos.", "erro");
+    }
+  }
 
   function entrarModoEdicao(p) {
     campoId.value = p.id_pacote;
@@ -69,6 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
     formPacote.elements["nivel"].value = p.nivel || "";
     formPacote.elements["data_inicio"].value = p.data_inicio;
     formPacote.elements["data_fim"].value = p.data_fim;
+    formPacote.elements["fk_destino"].value = p.fk_destino;
     btnSalvar.textContent = "Salvar alterações";
     btnCancelar.hidden = false;
     formPacote.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -122,6 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
       data_fim: formPacote.elements["data_fim"].value,
       tipo_viagem: formPacote.elements["tipo_viagem"].value || null,
       nivel: formPacote.elements["nivel"].value || null,
+      fk_destino: Number(formPacote.elements["fk_destino"].value),
     };
     if (dados.data_fim < dados.data_inicio) {
       mostrar(pacoteFeedback, "A data final não pode ser anterior à inicial.", "erro");
@@ -235,6 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Carga inicial.
+  carregarDestinos();
   carregarPacotes();
   carregarContas();
 });
