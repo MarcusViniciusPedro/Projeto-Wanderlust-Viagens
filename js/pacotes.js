@@ -81,7 +81,7 @@ function criarCard(pac, extra = "") {
     ${visualTipo(pac.tipo_viagem)}
     <div class="pacote-corpo">
       <h2 class="pacote-nome">${pac.cidade} - ${pac.estado}</h2>
-      <p class="pacote-tipo">${capitalizarTipo(pac.tipo_viagem)}${pac.nivel ? ` · ${capitalizarTipo(pac.nivel)}` : ""}</p>
+      <p class="pacote-tipo">${capitalizarTipo(pac.tipo_viagem)}${pac.nivel ? ` · ${rotuloNivel(pac.nivel)}` : ""}</p>
       <p class="pacote-preco">${formatarMoeda(pac.preco_base)}</p>
       ${extra}
       <button type="button" class="btn btn-primary w-100"
@@ -163,7 +163,7 @@ function criarModal(pac) {
           ${visualTipo(pac.tipo_viagem)}
           <dl class="resumo-lista mt-3">
             <div class="resumo-linha"><dt>Tipo</dt><dd>${capitalizarTipo(pac.tipo_viagem)}</dd></div>
-            <div class="resumo-linha"><dt>Nível</dt><dd>${pac.nivel ? capitalizarTipo(pac.nivel) : "—"}</dd></div>
+            <div class="resumo-linha"><dt>Nível</dt><dd>${rotuloNivel(pac.nivel)}</dd></div>
             <div class="resumo-linha"><dt>Data inicial</dt><dd>${pac.data_inicio}</dd></div>
             <div class="resumo-linha"><dt>Data final</dt><dd>${pac.data_fim}</dd></div>
             <div class="resumo-linha"><dt>Preço base</dt><dd>${formatarMoeda(pac.preco_base)}</dd></div>

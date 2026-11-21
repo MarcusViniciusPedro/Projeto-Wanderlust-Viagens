@@ -160,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <td>${p.data_inicio} a ${p.data_fim}</td>
             <td>${p.estoque}</td>
             <td>${escapar(p.tipo_viagem) || "—"}</td>
-            <td>${escapar(p.nivel) || "—"}</td>
+            <td>${rotuloNivel(p.nivel)}</td>
             <td class="text-nowrap">
               <button class="btn btn-sm btn-outline-primary" data-editar='${JSON.stringify(p)}'>Editar</button>
               <button class="btn btn-sm btn-outline-danger" data-excluir-pacote="${p.id_pacote}">Excluir</button>
@@ -471,7 +471,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <td>#${h.fk_Pacote_id_pacote}</td>
             <td>${escapar(h.rua)}, ${h.numero} (${escapar(h.cep)})</td>
             <td>${escapar(h.tipo_quarto) || "—"}</td>
-            <td>${escapar(h.regime_alimentacao) || "—"}</td>
+            <td>${rotuloRegime(h.regime_alimentacao)}</td>
             <td class="text-nowrap">
               <button class="btn btn-sm btn-outline-primary" data-editar-hospedagem='${JSON.stringify(h)}'>Editar</button>
               <button class="btn btn-sm btn-outline-danger" data-excluir-hospedagem="${h.id_hospedagem}">Excluir</button>
