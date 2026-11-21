@@ -21,6 +21,17 @@ const ROTULO_REGIME = {
 };
 const ROTULO_NIVEL = { economico: "Econômico", conforto: "Conforto", luxo: "Luxo" };
 
+// Normaliza um valor de nível/regime para a chave das tabelas de fatores:
+// minúsculas, sem acento e com espaços/hífens vira underscore.
+// Ex.: "Meia pensao" -> "meia_pensao", "Econômico" -> "economico".
+function normalizarChave(v) {
+  if (!v) return null;
+  return v
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .trim().toLowerCase()
+    .replace(/[\s-]+/g, "_");
+}
+
 function formatarMoeda(valor) {
   return Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -123,12 +134,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Nível vem do próprio pacote; regime vem da hospedagem do pacote (a 1ª, se
   // houver). Ambos entram no cálculo do orçamento sem escolha do cliente.
-  const nivelPacote = pacote.nivel || null;
+  // Normaliza para casar com as chaves das tabelas de fatores (o banco grava
+  // valores como "Economico"/"Meia pensao", as tabelas usam "economico"/"meia_pensao").
+  const nivelPacote = normalizarChave(pacote.nivel);
   let regimePacote = null;
   try {
     const hospedagens = await apiFetch(`/catalogo/hospedagens?fk_pacote=${pacote.id_pacote}`);
     if (hospedagens && hospedagens.length) {
-      regimePacote = hospedagens[0].regime_alimentacao || null;
+      regimePacote = normalizarChave(hospedagens[0].regime_alimentacao);
     }
   } catch (_) { /* sem hospedagem: regime fica neutro no cálculo */ }
 
