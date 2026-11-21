@@ -221,6 +221,7 @@ _PACOTE_PAYLOAD = {
     "estoque": 10,
     "tipo_viagem": "Praia",
     "nivel": "Conforto",
+    "fk_destino": 1,
 }
 _DESTINO_PAYLOAD = {
     "cidade": "Rio de Janeiro",

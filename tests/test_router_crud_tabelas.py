@@ -307,14 +307,79 @@ def test_get_pacote_por_id_publico(
             estoque=5,
             tipo_viagem="Praia",
             nivel="Conforto",
+            fk_destino=1,
+            cidade="Rio de Janeiro",
+            estado="RJ",
+            descricao="Praias famosas.",
         )
 
     monkeypatch.setattr(repository, "buscar_pacote", _buscar)
     # Publico: sem token deve funcionar (2xx), coerente com GET /catalogo/pacotes.
     resp = client.get("/catalogo/pacotes/7")
     assert resp.status_code == 200
-    assert resp.json()["id_pacote"] == 7
+    corpo = resp.json()
+    assert corpo["id_pacote"] == 7
+    assert corpo["fk_destino"] == 1
+    assert corpo["cidade"] == "Rio de Janeiro"
     assert client.get("/catalogo/pacotes/999").status_code == 404
+
+
+_PACOTE_PAYLOAD = {
+    "preco_base": 2500.0,
+    "data_inicio": "2025-12-20",
+    "data_fim": "2025-12-27",
+    "estoque": 10,
+    "tipo_viagem": "Praia",
+    "nivel": "Conforto",
+    "fk_destino": 1,
+}
+
+
+def test_criar_pacote_aceita_fk_destino(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    from app.catalogo import repository
+    from app.catalogo.schemas import PacoteSaida
+
+    def _criar(dados, settings=None):
+        return PacoteSaida(
+            id_pacote=42,
+            preco_base=dados.preco_base,
+            data_inicio=dados.data_inicio,
+            data_fim=dados.data_fim,
+            estoque=dados.estoque,
+            tipo_viagem=dados.tipo_viagem,
+            nivel=dados.nivel,
+            fk_destino=dados.fk_destino,
+        )
+
+    monkeypatch.setattr(repository, "criar_pacote", _criar)
+    resp = client.post(
+        "/catalogo/pacotes", json=_PACOTE_PAYLOAD, headers=_admin()
+    )
+    assert resp.status_code == 201
+    corpo = resp.json()
+    assert corpo["id_pacote"] == 42
+    assert corpo["fk_destino"] == 1
+
+
+def test_criar_pacote_destino_inexistente_400(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    from app.catalogo import repository
+
+    def _criar(dados, settings=None):
+        # Simula o THROW 50020/'Destino inexistente.' propagado pelo pymssql.
+        raise Exception(
+            "(50020, b'Destino inexistente.DB-Lib error message 50020')"
+        )
+
+    monkeypatch.setattr(repository, "criar_pacote", _criar)
+    resp = client.post(
+        "/catalogo/pacotes", json=_PACOTE_PAYLOAD, headers=_admin()
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "Destino inexistente."
 
 
 def test_get_pacote_por_id_sem_banco_503(

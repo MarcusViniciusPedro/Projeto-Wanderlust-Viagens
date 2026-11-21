@@ -38,9 +38,9 @@ INSERT INTO Credencial (id_usuario, senha_hash, totp_secret, two_factor) VALUES
 
 -- 3) Pacotes  -> ids 1, 2, 3
 INSERT INTO Pacote VALUES
-    (2500.00, '2025-12-20', '2025-12-27', 10, N'Praia',    N'Conforto'),
-    (1800.00, '2025-07-10', '2025-07-15', 5,  N'Serra',    N'Economico'),
-    (9800.00, '2026-05-01', '2026-05-12', 8,  N'Cultural', N'Luxo');
+    (2500.00, '2025-12-20', '2025-12-27', 10, N'Praia',    N'Conforto',  1),
+    (1800.00, '2025-07-10', '2025-07-15', 5,  N'Serra',    N'Economico', 2),
+    (9800.00, '2026-05-01', '2026-05-12', 8,  N'Cultural', N'Luxo',      3);
 
 -- 4) Viagens (destinos 1,2,3)  -> ids 1, 2, 3
 INSERT INTO Viagem VALUES

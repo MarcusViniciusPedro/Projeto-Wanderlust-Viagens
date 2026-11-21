@@ -89,6 +89,7 @@ def _dados_pacote() -> PacoteCriar:
         estoque=5,
         tipo_viagem="Aventura",
         nivel="Intermediario",
+        fk_destino=1,
     )
 
 
@@ -111,6 +112,7 @@ def test_criar_pacote_exec_procedure_e_retorna_id(monkeypatch):
     assert "EXEC dbo.sp_criar_pacote" in _texto_execs(cursor)
     # Nao deve haver INSERT inline.
     assert "INSERT INTO" not in _texto_execs(cursor)
+    assert saida.fk_destino == 1
     sql, params = cursor.execucoes[0]
     assert params == (
         dados.preco_base,
@@ -119,6 +121,7 @@ def test_criar_pacote_exec_procedure_e_retorna_id(monkeypatch):
         dados.estoque,
         dados.tipo_viagem,
         dados.nivel,
+        dados.fk_destino,
     )
     assert conn.commits == 1
     assert conn.closed is True
@@ -140,6 +143,7 @@ def test_atualizar_pacote_uma_linha_retorna_objeto(monkeypatch):
     assert saida.id_pacote == 9
     assert "EXEC dbo.sp_atualizar_pacote" in _texto_execs(cursor)
     assert "UPDATE dbo.Pacote" not in _texto_execs(cursor)
+    assert saida.fk_destino == 1
     _, params = cursor.execucoes[0]
     assert params == (
         9,
@@ -149,6 +153,7 @@ def test_atualizar_pacote_uma_linha_retorna_objeto(monkeypatch):
         dados.estoque,
         dados.tipo_viagem,
         dados.nivel,
+        dados.fk_destino,
     )
     assert conn.commits == 1
 
@@ -205,6 +210,10 @@ def test_listar_pacotes_exec_sp_e_mapeia(monkeypatch):
                     5,
                     "Aventura",
                     "Intermediario",
+                    1,
+                    "Rio de Janeiro",
+                    "RJ",
+                    "Praias famosas.",
                 ),
                 (
                     2,
@@ -213,6 +222,10 @@ def test_listar_pacotes_exec_sp_e_mapeia(monkeypatch):
                     date(2026, 2, 5),
                     0,
                     "Praia",
+                    None,
+                    2,
+                    "Gramado",
+                    "RS",
                     None,
                 ),
             ]
@@ -229,8 +242,13 @@ def test_listar_pacotes_exec_sp_e_mapeia(monkeypatch):
     assert pacotes[0].id_pacote == 1
     assert pacotes[0].preco_base == 1500.0
     assert pacotes[0].tipo_viagem == "Aventura"
+    assert pacotes[0].fk_destino == 1
+    assert pacotes[0].cidade == "Rio de Janeiro"
+    assert pacotes[0].estado == "RJ"
     assert pacotes[1].estoque == 0
     assert pacotes[1].nivel is None
+    assert pacotes[1].fk_destino == 2
+    assert pacotes[1].cidade == "Gramado"
     assert conn.closed is True
 
 

@@ -15,6 +15,10 @@ CREATE INDEX IX_Pacote_busca
     ON Pacote (tipo_viagem, nivel, data_inicio)
     INCLUDE (preco_base, estoque)
 
+-- JOIN de Pacote com Destino (catalogo publico mostra cidade/estado/descricao).
+CREATE INDEX IX_Pacote_destino
+    ON Pacote (fk_destino)
+
 -- Agregacao de avaliacoes por pacote (score do IA_Feedback).
 CREATE INDEX IX_Avaliacao_pacote
     ON Avaliacao (fk_pacote)

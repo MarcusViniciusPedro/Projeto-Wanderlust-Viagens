@@ -22,6 +22,10 @@ class PacoteSaida(BaseModel):
     estoque: int
     tipo_viagem: Optional[str] = None
     nivel: Optional[str] = None
+    fk_destino: int
+    cidade: Optional[str] = None
+    estado: Optional[str] = None
+    descricao: Optional[str] = None
 
 
 class FiltroBusca(BaseModel):
@@ -65,6 +69,7 @@ class PacoteCriar(BaseModel):
     estoque: int = Field(ge=0)
     tipo_viagem: Optional[str] = Field(default=None, max_length=50)
     nivel: Optional[str] = Field(default=None, max_length=50)
+    fk_destino: int
 
     @model_validator(mode="after")
     def _validar_periodo(self) -> "PacoteCriar":

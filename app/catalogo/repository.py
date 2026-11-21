@@ -46,6 +46,10 @@ def listar_pacotes(settings: Optional[Settings] = None) -> List[PacoteSaida]:
             estoque=linha[4],
             tipo_viagem=linha[5],
             nivel=linha[6],
+            fk_destino=linha[7],
+            cidade=linha[8],
+            estado=linha[9],
+            descricao=linha[10],
         )
         for linha in linhas
     ]
@@ -108,7 +112,8 @@ def criar_pacote(
                 @data_fim=%s,
                 @estoque=%s,
                 @tipo_viagem=%s,
-                @nivel=%s
+                @nivel=%s,
+                @fk_destino=%s
             """,
             (
                 dados.preco_base,
@@ -117,6 +122,7 @@ def criar_pacote(
                 dados.estoque,
                 dados.tipo_viagem,
                 dados.nivel,
+                dados.fk_destino,
             ),
         )
         # Procedure devolve SELECT CAST(SCOPE_IDENTITY() AS INT); leia o id dai.
@@ -125,6 +131,8 @@ def criar_pacote(
     finally:
         conn.close()
 
+    # cidade/estado/descricao ficam None no retorno de escrita; so a leitura
+    # (sp_listar_pacotes/buscar_pacote) faz o JOIN com Destino.
     return PacoteSaida(
         id_pacote=id_pacote,
         preco_base=float(dados.preco_base),
@@ -133,6 +141,7 @@ def criar_pacote(
         estoque=dados.estoque,
         tipo_viagem=dados.tipo_viagem,
         nivel=dados.nivel,
+        fk_destino=dados.fk_destino,
     )
 
 
@@ -145,10 +154,12 @@ def buscar_pacote(
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT id_pacote, preco_base, data_inicio, data_fim,
-                   estoque, tipo_viagem, nivel
-            FROM dbo.Pacote
-            WHERE id_pacote = %s
+            SELECT p.id_pacote, p.preco_base, p.data_inicio, p.data_fim,
+                   p.estoque, p.tipo_viagem, p.nivel, p.fk_destino,
+                   d.cidade, d.estado, d.descricao
+            FROM dbo.Pacote p
+            JOIN dbo.Destino d ON d.id_destino = p.fk_destino
+            WHERE p.id_pacote = %s
             """,
             (id_pacote,),
         )
@@ -166,6 +177,10 @@ def buscar_pacote(
         estoque=linha[4],
         tipo_viagem=linha[5],
         nivel=linha[6],
+        fk_destino=linha[7],
+        cidade=linha[8],
+        estado=linha[9],
+        descricao=linha[10],
     )
 
 
@@ -185,7 +200,8 @@ def atualizar_pacote(
                 @data_fim=%s,
                 @estoque=%s,
                 @tipo_viagem=%s,
-                @nivel=%s
+                @nivel=%s,
+                @fk_destino=%s
             """,
             (
                 id_pacote,
@@ -195,6 +211,7 @@ def atualizar_pacote(
                 dados.estoque,
                 dados.tipo_viagem,
                 dados.nivel,
+                dados.fk_destino,
             ),
         )
         # Procedure sob SET NOCOUNT ON devolve SELECT @@ROWCOUNT; leia dai.
@@ -205,6 +222,8 @@ def atualizar_pacote(
 
     if afetadas == 0:
         return None
+    # cidade/estado/descricao ficam None no retorno de escrita; so a leitura
+    # faz o JOIN com Destino.
     return PacoteSaida(
         id_pacote=id_pacote,
         preco_base=float(dados.preco_base),
@@ -213,6 +232,7 @@ def atualizar_pacote(
         estoque=dados.estoque,
         tipo_viagem=dados.tipo_viagem,
         nivel=dados.nivel,
+        fk_destino=dados.fk_destino,
     )
 
 

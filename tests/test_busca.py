@@ -18,6 +18,7 @@ def _pacotes() -> list[PacoteSaida]:
             estoque=5,
             tipo_viagem="Praia",
             nivel="Economico",
+            fk_destino=1,
         ),
         PacoteSaida(
             id_pacote=2,
@@ -27,6 +28,7 @@ def _pacotes() -> list[PacoteSaida]:
             estoque=0,  # esgotado
             tipo_viagem="Praia",
             nivel="Luxo",
+            fk_destino=1,
         ),
         PacoteSaida(
             id_pacote=3,
@@ -36,6 +38,7 @@ def _pacotes() -> list[PacoteSaida]:
             estoque=2,
             tipo_viagem="Aventura",
             nivel="Conforto",
+            fk_destino=2,
         ),
         PacoteSaida(
             id_pacote=4,
@@ -45,6 +48,7 @@ def _pacotes() -> list[PacoteSaida]:
             estoque=3,
             tipo_viagem="Praia",
             nivel="Economico",
+            fk_destino=3,
         ),
     ]
 

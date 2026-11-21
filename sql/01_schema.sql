@@ -71,7 +71,9 @@ CREATE TABLE Pacote (
     estoque     INT NOT NULL,
     tipo_viagem NVARCHAR(50) NULL,
     nivel       NVARCHAR(50) NULL,
+    fk_destino  INT NOT NULL,
     PRIMARY KEY (id_pacote),
+    FOREIGN KEY (fk_destino) REFERENCES Destino (id_destino),
     CHECK (estoque >= 0),
     CHECK (data_fim >= data_inicio)
 )

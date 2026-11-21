@@ -286,15 +286,19 @@ CREATE PROCEDURE sp_criar_pacote
     @data_fim    DATE,
     @estoque     INT,
     @tipo_viagem NVARCHAR(50),
-    @nivel       NVARCHAR(50)
+    @nivel       NVARCHAR(50),
+    @fk_destino  INT
 AS
 BEGIN
     SET NOCOUNT ON;
 
+    IF NOT EXISTS (SELECT 1 FROM dbo.Destino WHERE id_destino = @fk_destino)
+        THROW 50020, 'Destino inexistente.', 1;
+
     INSERT INTO dbo.Pacote
-        (preco_base, data_inicio, data_fim, estoque, tipo_viagem, nivel)
+        (preco_base, data_inicio, data_fim, estoque, tipo_viagem, nivel, fk_destino)
     VALUES
-        (@preco_base, @data_inicio, @data_fim, @estoque, @tipo_viagem, @nivel);
+        (@preco_base, @data_inicio, @data_fim, @estoque, @tipo_viagem, @nivel, @fk_destino);
 
     SELECT CAST(SCOPE_IDENTITY() AS INT) AS id_pacote;  -- id gerado, lido via fetchone()[0]
 END;
@@ -311,10 +315,14 @@ CREATE PROCEDURE sp_atualizar_pacote
     @data_fim    DATE,
     @estoque     INT,
     @tipo_viagem NVARCHAR(50),
-    @nivel       NVARCHAR(50)
+    @nivel       NVARCHAR(50),
+    @fk_destino  INT
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.Destino WHERE id_destino = @fk_destino)
+        THROW 50020, 'Destino inexistente.', 1;
 
     UPDATE dbo.Pacote
     SET preco_base  = @preco_base,
@@ -322,7 +330,8 @@ BEGIN
         data_fim    = @data_fim,
         estoque     = @estoque,
         tipo_viagem = @tipo_viagem,
-        nivel       = @nivel
+        nivel       = @nivel,
+        fk_destino  = @fk_destino
     WHERE id_pacote = @id_pacote;
 
     SELECT @@ROWCOUNT;  -- linhas afetadas, lidas via fetchone()[0] no Python
@@ -355,7 +364,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT id_pacote, preco_base, data_inicio, data_fim, estoque, tipo_viagem, nivel
-    FROM dbo.Pacote;
+    SELECT p.id_pacote, p.preco_base, p.data_inicio, p.data_fim, p.estoque,
+           p.tipo_viagem, p.nivel, p.fk_destino, d.cidade, d.estado, d.descricao
+    FROM dbo.Pacote p
+    JOIN dbo.Destino d ON d.id_destino = p.fk_destino;
 END;
 GO

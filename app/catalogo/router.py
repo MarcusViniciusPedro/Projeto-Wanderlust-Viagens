@@ -55,6 +55,18 @@ def _erro_db_indisponivel() -> HTTPException:
     )
 
 
+def _e_destino_inexistente(exc: Exception) -> bool:
+    """True se a excecao for o THROW 50020/'Destino inexistente.' da procedure.
+
+    A validacao de FK de destino vive na procedure (sp_criar_pacote/
+    sp_atualizar_pacote: THROW 50020). O pymssql propaga essa falha como uma
+    excecao cuja mensagem contem o numero do erro e/ou o texto; detectamos por
+    substring para traduzir em HTTP 400.
+    """
+    mensagem = str(exc)
+    return "50020" in mensagem or "Destino inexistente" in mensagem
+
+
 @router.get("/pacotes", response_model=ResultadoBusca)
 def buscar_pacotes(
     tipo_viagem: Optional[str] = Query(default=None),
@@ -155,6 +167,13 @@ def criar_pacote(dados: PacoteCriar) -> PacoteSaida:
         return repository.criar_pacote(dados)
     except DatabaseNotConfiguredError as exc:
         raise _erro_db_indisponivel() from exc
+    except Exception as exc:
+        if _e_destino_inexistente(exc):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Destino inexistente.",
+            ) from exc
+        raise
 
 
 @router.put(
@@ -168,6 +187,13 @@ def atualizar_pacote(id_pacote: int, dados: PacoteAtualizar) -> PacoteSaida:
         atualizado = repository.atualizar_pacote(id_pacote, dados)
     except DatabaseNotConfiguredError as exc:
         raise _erro_db_indisponivel() from exc
+    except Exception as exc:
+        if _e_destino_inexistente(exc):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Destino inexistente.",
+            ) from exc
+        raise
 
     if atualizado is None:
         raise HTTPException(
