@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+import pymssql
+
 from app.catalogo.schemas import (
     DestinoCriar,
     DestinoSaida,
@@ -20,6 +22,11 @@ from app.catalogo.schemas import (
 )
 from app.core.config import Settings
 from app.db.session import get_connection
+
+
+class RecursoEmUsoError(RuntimeError):
+    """Exclusao bloqueada por dependencias (foreign key): ex.: pacote com
+    hospedagem/venda, ou destino com pacotes/viagens."""
 
 
 def listar_pacotes(settings: Optional[Settings] = None) -> List[PacoteSaida]:
@@ -209,10 +216,17 @@ def excluir_pacote(id_pacote: int, settings: Optional[Settings] = None) -> bool:
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
-        cursor.execute("EXEC dbo.sp_excluir_pacote %s", (id_pacote,))
-        # Procedure sob SET NOCOUNT ON devolve SELECT @@ROWCOUNT; leia dai.
-        afetadas = cursor.fetchone()[0]
-        conn.commit()
+        try:
+            cursor.execute("EXEC dbo.sp_excluir_pacote %s", (id_pacote,))
+            # Procedure sob SET NOCOUNT ON devolve SELECT @@ROWCOUNT; leia dai.
+            afetadas = cursor.fetchone()[0]
+            conn.commit()
+        except pymssql.IntegrityError as exc:
+            conn.rollback()
+            raise RecursoEmUsoError(
+                "Nao e possivel excluir: ha hospedagem(ns) ou venda(s) "
+                "vinculada(s) a este pacote. Remova-as primeiro."
+            ) from exc
     finally:
         conn.close()
 
@@ -362,12 +376,19 @@ def excluir_destino(id_destino: int, settings: Optional[Settings] = None) -> boo
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            "DELETE FROM dbo.Destino WHERE id_destino = %s",
-            (id_destino,),
-        )
-        afetadas = cursor.rowcount
-        conn.commit()
+        try:
+            cursor.execute(
+                "DELETE FROM dbo.Destino WHERE id_destino = %s",
+                (id_destino,),
+            )
+            afetadas = cursor.rowcount
+            conn.commit()
+        except pymssql.IntegrityError as exc:
+            conn.rollback()
+            raise RecursoEmUsoError(
+                "Nao e possivel excluir: ha pacote(s) ou viagem(ns) "
+                "vinculado(s) a este destino. Remova-os primeiro."
+            ) from exc
     finally:
         conn.close()
 

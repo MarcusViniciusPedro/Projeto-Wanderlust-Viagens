@@ -182,6 +182,10 @@ def excluir_pacote(id_pacote: int) -> None:
         removido = repository.excluir_pacote(id_pacote)
     except DatabaseNotConfiguredError as exc:
         raise _erro_db_indisponivel() from exc
+    except repository.RecursoEmUsoError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
 
     if not removido:
         raise HTTPException(
@@ -252,6 +256,10 @@ def excluir_destino(id_destino: int) -> None:
         removido = repository.excluir_destino(id_destino)
     except DatabaseNotConfiguredError as exc:
         raise _erro_db_indisponivel() from exc
+    except repository.RecursoEmUsoError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
 
     if not removido:
         raise HTTPException(
