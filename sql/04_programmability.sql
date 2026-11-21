@@ -402,10 +402,19 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DELETE FROM dbo.Pacote
-    WHERE id_pacote = @id_pacote;
+    -- Remove em cascata apenas os registros de IA do pacote (avaliacoes e
+    -- feedback), que sao acessorios e nao faz sentido bloquearem a exclusao.
+    -- Hospedagem NAO entra na cascata (o admin a remove explicitamente antes;
+    -- se houver, o DELETE falha por FK -> HTTP 409). Venda (dbo.Obtem) tambem
+    -- bloqueia, preservando o historico financeiro.
+    BEGIN TRANSACTION;
+        DELETE FROM dbo.Avaliacao   WHERE fk_pacote = @id_pacote;
+        DELETE FROM dbo.IA_Feedback WHERE fk_pacote = @id_pacote;
+        DELETE FROM dbo.Pacote      WHERE id_pacote = @id_pacote;
+        DECLARE @afetadas INT = @@ROWCOUNT;
+    COMMIT TRANSACTION;
 
-    SELECT @@ROWCOUNT;  -- linhas afetadas, lidas via fetchone()[0] no Python
+    SELECT @afetadas;  -- linhas afetadas no Pacote, lidas via fetchone()[0]
 END;
 GO
 
