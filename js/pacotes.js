@@ -169,6 +169,35 @@ function criarModal(pac) {
             <div class="resumo-linha"><dt>Vagas</dt><dd>${pac.estoque}</dd></div>
           </dl>
           <p class="pacote-descricao">${pac.descricao || ""}</p>
+
+          <!-- Avaliações (RF8) -->
+          <section class="avaliacoes mt-3" aria-label="Avaliações">
+            <h3 class="cadastro-legenda">Avaliações</h3>
+            <p class="avaliacoes-resumo" id="aval-resumo-${pac.id_pacote}">Carregando...</p>
+            <form class="form-avaliar" id="form-aval-${pac.id_pacote}" hidden>
+              <div class="d-flex gap-2 align-items-end flex-wrap">
+                <div>
+                  <label class="form-label" for="aval-nota-${pac.id_pacote}">Sua nota</label>
+                  <select class="form-select" id="aval-nota-${pac.id_pacote}" required>
+                    <option value="5">5 - Excelente</option>
+                    <option value="4">4 - Muito bom</option>
+                    <option value="3">3 - Bom</option>
+                    <option value="2">2 - Regular</option>
+                    <option value="1">1 - Ruim</option>
+                  </select>
+                </div>
+                <div class="flex-grow-1">
+                  <label class="form-label" for="aval-coment-${pac.id_pacote}">Comentário (opcional)</label>
+                  <input type="text" class="form-control" id="aval-coment-${pac.id_pacote}" maxlength="500">
+                </div>
+                <button type="submit" class="btn btn-outline-primary">Avaliar</button>
+              </div>
+              <div class="cadastro-feedback mt-2" id="aval-feedback-${pac.id_pacote}" role="alert" aria-live="polite" hidden></div>
+            </form>
+            <p class="form-text" id="aval-login-${pac.id_pacote}" hidden>
+              <a href="login.html">Entre na sua conta</a> para avaliar este pacote.
+            </p>
+          </section>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-primary" data-reservar="${pac.id_pacote}">Reserve já</button>
@@ -176,7 +205,69 @@ function criarModal(pac) {
       </div>
     </div>`;
 
+  // Ao abrir o modal: carrega o feedback agregado e prepara o formulário.
+  let carregado = false;
+  div.addEventListener("show.bs.modal", async () => {
+    if (carregado) return;
+    carregado = true;
+    await carregarAvaliacoes(pac.id_pacote);
+  });
+
   return div;
+}
+
+// Carrega o feedback agregado do pacote e configura o envio de avaliação.
+async function carregarAvaliacoes(idPacote) {
+  const resumoEl = document.getElementById(`aval-resumo-${idPacote}`);
+  const form = document.getElementById(`form-aval-${idPacote}`);
+  const avisoLogin = document.getElementById(`aval-login-${idPacote}`);
+
+  try {
+    const fb = await apiFetch(`/recomendacao/pacotes/${idPacote}/feedback`);
+    if (fb.total_avaliacoes > 0) {
+      resumoEl.textContent =
+        `Nota média ${Number(fb.score_agregado).toFixed(1)} (${fb.total_avaliacoes} avaliação(ões)) — ${fb.resumo}`;
+    } else {
+      resumoEl.textContent = "Este pacote ainda não tem avaliações.";
+    }
+  } catch (erro) {
+    resumoEl.textContent = "Não foi possível carregar as avaliações.";
+  }
+
+  // Só quem está logado pode avaliar.
+  if (!localStorage.getItem("access_token")) {
+    if (avisoLogin) avisoLogin.hidden = false;
+    return;
+  }
+  if (!form) return;
+  form.hidden = false;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nota = Number(document.getElementById(`aval-nota-${idPacote}`).value);
+    const comentario = document.getElementById(`aval-coment-${idPacote}`).value.trim() || null;
+    const fb = document.getElementById(`aval-feedback-${idPacote}`);
+    fb.hidden = true;
+    try {
+      await apiFetch("/recomendacao/avaliacoes", {
+        method: "POST",
+        body: JSON.stringify({ fk_pacote: idPacote, nota, comentario }),
+      });
+      fb.textContent = "Avaliação registrada. Obrigado!";
+      fb.classList.remove("feedback-erro");
+      fb.classList.add("feedback-ok");
+      fb.hidden = false;
+      // Atualiza o resumo agregado.
+      const novo = await apiFetch(`/recomendacao/pacotes/${idPacote}/feedback`);
+      resumoEl.textContent =
+        `Nota média ${Number(novo.score_agregado).toFixed(1)} (${novo.total_avaliacoes} avaliação(ões)) — ${novo.resumo}`;
+    } catch (erro) {
+      fb.textContent = erro.message || "Não foi possível registrar a avaliação.";
+      fb.classList.remove("feedback-ok");
+      fb.classList.add("feedback-erro");
+      fb.hidden = false;
+    }
+  });
 }
 
 // Preenche o select de destino com os estados reais existentes nos pacotes.

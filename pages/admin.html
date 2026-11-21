@@ -261,6 +261,40 @@
                         </table>
                     </div>
                 </section>
+
+                <!-- ============ ESTATÍSTICAS (RF10) ============ -->
+                <section class="admin-secao" aria-labelledby="sec-estatisticas">
+                    <h2 id="sec-estatisticas" class="cadastro-legenda">Estatísticas: turistas por destino</h2>
+
+                    <form id="form-estatisticas" class="admin-form" novalidate>
+                        <div class="row align-items-end">
+                            <div class="col-md-4 mb-2">
+                                <label for="estat-ano" class="form-label">Ano</label>
+                                <input type="number" class="form-control" id="estat-ano"
+                                    name="ano" min="1900" max="3000" step="1">
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <button type="submit" class="btn btn-primary">Consultar</button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div id="estat-feedback" class="cadastro-feedback" role="alert" aria-live="polite" hidden></div>
+
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Destino</th>
+                                    <th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th>
+                                    <th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-estatisticas"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </main>
 

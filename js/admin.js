@@ -515,6 +515,44 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // ======================= ESTATÍSTICAS (RF10) =======================
+  const formEstat = document.getElementById("form-estatisticas");
+  const estatFeedback = document.getElementById("estat-feedback");
+  const tabelaEstat = document.getElementById("tabela-estatisticas");
+  const campoAno = document.getElementById("estat-ano");
+  if (campoAno) campoAno.value = new Date().getFullYear();
+
+  async function carregarEstatisticas(ano) {
+    try {
+      // Retorno: { "destino": [12 contagens jan..dez] }
+      const dados = await apiFetch(`/estatisticas/turistas-por-destino?ano=${ano}`);
+      const destinos = Object.keys(dados);
+      if (!destinos.length) {
+        tabelaEstat.innerHTML =
+          `<tr><td colspan="14" class="text-center text-muted">Nenhum dado para ${ano}.</td></tr>`;
+        return;
+      }
+      tabelaEstat.innerHTML = destinos
+        .map((nome) => {
+          const meses = dados[nome] || [];
+          const celulas = Array.from({ length: 12 }, (_, i) => `<td>${meses[i] ?? 0}</td>`).join("");
+          const total = meses.reduce((a, b) => a + (b || 0), 0);
+          return `<tr><td>${escapar(nome)}</td>${celulas}<td><strong>${total}</strong></td></tr>`;
+        })
+        .join("");
+    } catch (erro) {
+      mostrar(estatFeedback, erro.message || "Não foi possível carregar as estatísticas.", "erro");
+    }
+  }
+
+  if (formEstat) {
+    formEstat.addEventListener("submit", (e) => {
+      e.preventDefault();
+      estatFeedback.hidden = true;
+      carregarEstatisticas(Number(campoAno.value) || new Date().getFullYear());
+    });
+  }
+
   // Carga inicial.
   carregarDestinos();
   carregarPacotes();
@@ -522,4 +560,5 @@ document.addEventListener("DOMContentLoaded", () => {
   recarregarSelectPacotes();
   carregarHospedagens();
   carregarContas();
+  carregarEstatisticas(new Date().getFullYear());
 });
