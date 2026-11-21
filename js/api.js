@@ -14,7 +14,10 @@ async function apiFetch(caminho, opcoes = {}) {
     const erro = await resposta.json().catch(() => ({}));
     throw new Error(erro.detail || `Erro ${resposta.status}`);
   }
-  return resposta.json();
+  // 204 No Content (ex.: DELETE) ou corpo vazio: não há JSON para parsear.
+  if (resposta.status === 204) return null;
+  const texto = await resposta.text();
+  return texto ? JSON.parse(texto) : null;
 }
 
 // Exemplo de uso: estimar orçamento (não precisa de banco)
