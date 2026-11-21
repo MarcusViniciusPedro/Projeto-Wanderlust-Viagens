@@ -235,10 +235,15 @@
 .recomendacao-mascote {
     flex: 0 0 500px;
     align-self: flex-start;
+    display: flex;
+    justify-content: center;
+}
+
+/* o mascote entra como <img>; limita ao container sem distorcer */
+.recomendacao-mascote-img {
+    max-width: 100%;
+    height: auto;
     border-radius: 12px;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
 }
 
 .recomendacao-form {
