@@ -74,7 +74,7 @@ def criar_usuario(
         cursor.execute(
             """
             INSERT INTO dbo.Credencial (id_usuario, senha_hash, totp_secret, two_factor)
-            VALUES (%s, %s, %s, 1)
+            VALUES (%s, %s, %s, 0)
             """,
             (id_passageiro, hash_senha(dados.senha), gerar_segredo_totp()),
         )
