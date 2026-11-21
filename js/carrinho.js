@@ -1,4 +1,5 @@
-// Carrinho: lê o pacote reservado (localStorage "pacote_reservado"),
+// Carrinho: lê o pacote reservado (sessionStorage "pacote_reservado" — dura só
+// a sessão do navegador, some ao fechar),
 // mostra a prévia, calcula o orçamento (RF4) e registra a compra (RF5) se o
 // cliente estiver logado. Busca o pacote no banco (GET /catalogo/pacotes/{id}).
 
@@ -96,7 +97,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const vazio = document.getElementById("carrinho-vazio");
   const conteudo = document.getElementById("carrinho-conteudo");
 
-  const idReservado = Number(localStorage.getItem("pacote_reservado"));
+  const idReservado = Number(sessionStorage.getItem("pacote_reservado"));
 
   // Carrinho vazio: sem pacote reservado.
   if (!idReservado) {
@@ -111,7 +112,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     pacote = await apiFetch(`/catalogo/pacotes/${idReservado}`);
   } catch (erro) {
     // Pacote não existe mais (ex.: removido) ou falha de rede.
-    localStorage.removeItem("pacote_reservado");
+    sessionStorage.removeItem("pacote_reservado");
     vazio.hidden = false;
     conteudo.hidden = true;
     return;
@@ -186,7 +187,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnLimpar) {
     btnLimpar.addEventListener("click", () => {
       if (!confirm("Remover o pacote do carrinho?")) return;
-      localStorage.removeItem("pacote_reservado");
+      sessionStorage.removeItem("pacote_reservado");
       conteudo.hidden = true;
       vazio.hidden = false;
     });
@@ -377,7 +378,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
       btnPagar.hidden = true;
       btnCancelarVenda.hidden = true;
-      localStorage.removeItem("pacote_reservado");
+      sessionStorage.removeItem("pacote_reservado");
     } catch (erro) {
       mostrarFeedback(confirmarFeedback, erro.message || "Não foi possível concluir o pagamento.", "erro");
       btnPagar.disabled = false;
@@ -400,7 +401,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       btnPagar.hidden = true;
       btnCancelarVenda.hidden = true;
       vendaCriada = null;
-      localStorage.removeItem("pacote_reservado");
+      sessionStorage.removeItem("pacote_reservado");
     } catch (erro) {
       mostrarFeedback(confirmarFeedback, erro.message || "Não foi possível cancelar a compra.", "erro");
       btnCancelarVenda.disabled = false;

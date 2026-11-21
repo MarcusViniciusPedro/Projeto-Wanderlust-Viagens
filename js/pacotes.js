@@ -306,6 +306,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   const filtros = lerFiltros();
   sincronizarControles(filtros);
 
+  // Botão "Limpar filtros": aparece quando há qualquer parâmetro na URL
+  // (busca ou recomendação) e recarrega a página sem filtros, liberando a
+  // barra de busca para uma pesquisa nova.
+  const btnLimparFiltros = document.getElementById("btn-limpar-filtros");
+  if (btnLimparFiltros && window.location.search) {
+    btnLimparFiltros.hidden = false;
+    btnLimparFiltros.addEventListener("click", () => {
+      window.location.href = "pacotes.html";
+    });
+  }
+
   function renderizar(lista) {
     grade.innerHTML = "";
     modais.innerHTML = "";
@@ -380,7 +391,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const botao = e.target.closest("[data-reservar]");
     if (!botao) return;
     const id = Number(botao.getAttribute("data-reservar"));
-    localStorage.setItem("pacote_reservado", String(id));
+    sessionStorage.setItem("pacote_reservado", String(id));
     window.location.href = "carrinho.html";
   });
 });
