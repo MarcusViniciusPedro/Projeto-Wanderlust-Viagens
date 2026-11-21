@@ -71,6 +71,41 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnCancelar = document.getElementById("btn-cancelar-pacote");
   const campoId = document.getElementById("pacote-id");
   const selectDestino = document.getElementById("pacote-destino");
+  const selectTipoPac = document.getElementById("pacote-tipo");
+  const inputTipoNovo = document.getElementById("pacote-tipo-novo");
+
+  // Mostra o campo de texto quando o admin escolhe "Outro (novo tipo)".
+  selectTipoPac.addEventListener("change", () => {
+    const novo = selectTipoPac.value === "__novo__";
+    inputTipoNovo.hidden = !novo;
+    if (novo) inputTipoNovo.focus();
+  });
+
+  // Tipo escolhido: texto digitado quando "Outro", senão o valor do select.
+  function tipoEscolhido() {
+    if (selectTipoPac.value === "__novo__") {
+      return inputTipoNovo.value.trim() || null;
+    }
+    return selectTipoPac.value || null;
+  }
+
+  // Popula o select com os tipos já existentes nos pacotes (antes de "Outro").
+  function popularTiposExistentes(pacotes) {
+    const tipos = [...new Set(pacotes.map((p) => p.tipo_viagem).filter(Boolean))].sort();
+    const atual = selectTipoPac.value;
+    // Remove opções dinâmicas antigas (mantém "—" e "Outro").
+    [...selectTipoPac.options].forEach((o) => {
+      if (o.value && o.value !== "__novo__") o.remove();
+    });
+    const optNovo = selectTipoPac.querySelector('option[value="__novo__"]');
+    for (const t of tipos) {
+      const opt = document.createElement("option");
+      opt.value = t;
+      opt.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+      selectTipoPac.insertBefore(opt, optNovo);
+    }
+    if (atual) selectTipoPac.value = atual;
+  }
 
   async function carregarDestinos() {
     try {
@@ -90,7 +125,10 @@ document.addEventListener("DOMContentLoaded", () => {
     campoId.value = p.id_pacote;
     formPacote.elements["preco_base"].value = p.preco_base;
     formPacote.elements["estoque"].value = p.estoque;
-    formPacote.elements["tipo_viagem"].value = p.tipo_viagem || "";
+    // Tipo: como os tipos existentes já estão no select, basta selecionar.
+    selectTipoPac.value = p.tipo_viagem || "";
+    inputTipoNovo.hidden = true;
+    inputTipoNovo.value = "";
     formPacote.elements["nivel"].value = p.nivel || "";
     formPacote.elements["data_inicio"].value = p.data_inicio;
     formPacote.elements["data_fim"].value = p.data_fim;
@@ -103,6 +141,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function sairModoEdicao() {
     formPacote.reset();
     campoId.value = "";
+    inputTipoNovo.hidden = true;
+    inputTipoNovo.value = "";
     btnSalvar.textContent = "Adicionar pacote";
     btnCancelar.hidden = true;
   }
@@ -111,6 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await listarPacotes();
       const pacotes = res.pacotes || [];
+      popularTiposExistentes(pacotes);
       tabelaPacotes.innerHTML = pacotes
         .map(
           (p) => `<tr>
@@ -146,7 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
       estoque: Number(formPacote.elements["estoque"].value),
       data_inicio: formPacote.elements["data_inicio"].value,
       data_fim: formPacote.elements["data_fim"].value,
-      tipo_viagem: formPacote.elements["tipo_viagem"].value || null,
+      tipo_viagem: tipoEscolhido(),
       nivel: formPacote.elements["nivel"].value || null,
       fk_destino: Number(formPacote.elements["fk_destino"].value),
     };
