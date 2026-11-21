@@ -352,6 +352,29 @@
     margin-bottom: 0;
 }
 
+/* Street View do destino no modal de pacote (RF9) */
+.pacote-streetview {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.pacote-streetview iframe {
+    width: 100%;
+    min-height: 300px;
+    border: 0;
+    display: block;
+}
+
+.streetview-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #5b6b7d;
+    padding: 1rem;
+    min-height: 220px;
+}
+
 /* home: catálogo / carrossel de pacotes */
 
 .catalogo {

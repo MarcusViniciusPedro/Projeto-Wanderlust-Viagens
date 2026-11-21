@@ -83,20 +83,8 @@ function criarModal(pac) {
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
         <div class="modal-body">
-          <div id="${carrId}" class="carousel slide" data-bs-ride="carousel">
-            <div class="carousel-inner">
-              <div class="carousel-item active"><div class="pacote-imagem"></div></div>
-              <div class="carousel-item"><div class="pacote-imagem"></div></div>
-              <div class="carousel-item"><div class="pacote-imagem"></div></div>
-            </div>
-            <button class="carousel-control-prev" type="button" data-bs-target="#${carrId}" data-bs-slide="prev">
-              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-              <span class="visually-hidden">Anterior</span>
-            </button>
-            <button class="carousel-control-next" type="button" data-bs-target="#${carrId}" data-bs-slide="next">
-              <span class="carousel-control-next-icon" aria-hidden="true"></span>
-              <span class="visually-hidden">Próximo</span>
-            </button>
+          <div class="pacote-streetview" id="streetview-${pac.id_pacote}">
+            <div class="pacote-imagem streetview-placeholder">Carregando visualização do destino...</div>
           </div>
           <dl class="resumo-lista mt-3">
             <div class="resumo-linha"><dt>Tipo</dt><dd>${capitalizarTipo(pac.tipo_viagem)}</dd></div>
@@ -112,6 +100,26 @@ function criarModal(pac) {
         </div>
       </div>
     </div>`;
+
+  // Carrega o Street View do destino na primeira vez que o modal abre (RF9).
+  let carregado = false;
+  div.addEventListener("show.bs.modal", async () => {
+    if (carregado) return;
+    carregado = true;
+    const alvo = div.querySelector(`#streetview-${pac.id_pacote}`);
+    try {
+      const sv = await apiFetch(`/catalogo/destinos/${pac.fk_destino}/streetview`);
+      // embed_html é um iframe pronto vindo do back; usamos ele diretamente.
+      alvo.innerHTML = sv.embed_html
+        ? sv.embed_html
+        : `<a href="${sv.url}" target="_blank" rel="noopener">Ver no Street View (${sv.local})</a>`;
+    } catch (erro) {
+      carregado = false; // permite nova tentativa ao reabrir
+      alvo.innerHTML =
+        `<div class="pacote-imagem streetview-placeholder">Não foi possível carregar a visualização do destino.</div>`;
+    }
+  });
+
   return div;
 }
 
