@@ -40,10 +40,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Select de tipo de viagem (tipos reais presentes nos pacotes).
-  const selectTipo = document.getElementById("busca-tipo");
+  // Select de tipo do formulário de recomendação: tipos reais dos pacotes.
+  const selectTipo = document.getElementById("rec-tipo");
   if (selectTipo) {
     const tipos = [...new Set(pacotes.map((p) => p.tipo_viagem).filter(Boolean))].sort();
-    // Mantém a opção "Todos" (primeira) e substitui as demais pelas reais.
     for (const t of tipos) {
       const opt = document.createElement("option");
       opt.value = t;
@@ -53,70 +53,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --- Recomendação (RF7): POST /recomendacao/ranking -------------------
+  // Recomendação: ao enviar, redireciona para pacotes.html com as preferências
+  // na URL (?recomendar=1&...). O ranking e os selos são exibidos lá.
   const formRec = document.getElementById("form-recomendacao");
   if (formRec) {
-    const feedbackRec = document.getElementById("recomendacao-feedback");
-    const listaRec = document.getElementById("recomendacao-lista");
-    const btnRec = document.getElementById("btn-recomendar");
-
-    formRec.addEventListener("submit", async (evento) => {
+    formRec.addEventListener("submit", (evento) => {
       evento.preventDefault();
-
-      if (!pacotes.length) {
-        feedbackRec.textContent = "Não há pacotes disponíveis para recomendar.";
-        feedbackRec.classList.add("feedback-erro");
-        feedbackRec.hidden = false;
-        return;
-      }
-
-      // Candidatos: pacotes do banco. Sem avaliações, o componente de
-      // reputação do back cai no neutro (0.5) para todos.
-      const candidatos = pacotes.map((p) => ({
-        id_pacote: p.id_pacote,
-        preco_base: p.preco_base,
-        tipo_viagem: p.tipo_viagem,
-        nivel: p.nivel ?? null,
-        total_avaliacoes: 0,
-      }));
-
+      const params = new URLSearchParams({ recomendar: "1" });
+      const tipo = formRec.elements["tipo_viagem"].value;
+      const nivel = formRec.elements["nivel"].value;
       const orcamento = formRec.elements["orcamento_max"].value.trim();
-      const preferencia = {
-        tipo_viagem: formRec.elements["tipo_viagem"].value || null,
-        nivel: formRec.elements["nivel"].value || null,
-        orcamento_max: orcamento ? Number(orcamento) : null,
-      };
-
-      btnRec.disabled = true;
-      feedbackRec.hidden = true;
-      listaRec.hidden = true;
-
-      try {
-        const ranking = await apiFetch("/recomendacao/ranking", {
-          method: "POST",
-          body: JSON.stringify({ preferencia, pacotes: candidatos }),
-        });
-
-        listaRec.innerHTML = ranking
-          .map((item) => {
-            const pac = pacotes.find((p) => p.id_pacote === item.id_pacote);
-            const nome = pac && pac.cidade ? `${pac.cidade} - ${pac.estado}` : `Pacote ${item.id_pacote}`;
-            const preco = pac ? ` — ${moeda(pac.preco_base)}` : "";
-            const selo = item.dentro_do_orcamento
-              ? '<span class="rec-selo rec-ok">dentro do orçamento</span>'
-              : '<span class="rec-selo rec-fora">acima do orçamento</span>';
-            return `<li><strong>${nome}</strong>${preco} ${selo}
-              <span class="rec-score">aderência ${Math.round(item.score * 100)}%</span></li>`;
-          })
-          .join("");
-        listaRec.hidden = false;
-      } catch (erro) {
-        feedbackRec.textContent =
-          erro.message || "Não foi possível obter recomendações. Tente novamente.";
-        feedbackRec.classList.add("feedback-erro");
-        feedbackRec.hidden = false;
-      } finally {
-        btnRec.disabled = false;
-      }
+      if (tipo) params.set("tipo_viagem", tipo);
+      if (nivel) params.set("nivel", nivel);
+      if (orcamento) params.set("orcamento_max", orcamento);
+      window.location.href = `pages/pacotes.html?${params.toString()}`;
     });
   }
 });

@@ -352,27 +352,12 @@
     margin-bottom: 0;
 }
 
-/* Street View do destino no modal de pacote (RF9) */
-.pacote-streetview {
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.pacote-streetview iframe {
-    width: 100%;
-    min-height: 300px;
-    border: 0;
-    display: block;
-}
-
-.streetview-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    color: #5b6b7d;
-    padding: 1rem;
-    min-height: 220px;
+/* aderência do pacote (ranking de recomendação na página de pacotes) */
+.rec-aderencia {
+    font-size: 0.85rem;
+    color: #0d3b66;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
 }
 
 /* home: catálogo / carrossel de pacotes */
@@ -404,6 +389,18 @@
     /* espaço reservado para a imagem do pacote */
     height: 220px;
     background-color: #e3e9f0;
+}
+
+/* identidade visual por tipo de viagem (emoji sobre cor) */
+.pacote-imagem-tipo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pacote-imagem-tipo span {
+    font-size: 4rem;
+    line-height: 1;
 }
 
 .pacote-corpo {

@@ -92,7 +92,7 @@ function montarDetalhe(dl, p) {
     .join("");
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const vazio = document.getElementById("carrinho-vazio");
   const conteudo = document.getElementById("carrinho-conteudo");
 
@@ -119,6 +119,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const local =
     pacote.cidade ? `${pacote.cidade} - ${pacote.estado}` : `Pacote ${pacote.id_pacote}`;
+
+  // Identidade visual por tipo na prévia (mesma lógica da página de pacotes).
+  const VISUAL_TIPO = {
+    praia: { emoji: "🏖️", cor: "#2a9d8f" }, serra: { emoji: "⛰️", cor: "#5f7470" },
+    cultural: { emoji: "🏛️", cor: "#8d6e63" }, relax: { emoji: "🧘", cor: "#5b8c9e" },
+    radical: { emoji: "🪂", cor: "#e76f51" },
+  };
+  const vis = VISUAL_TIPO[(pacote.tipo_viagem || "").toLowerCase()] || { emoji: "✈️", cor: "#0d3b66" };
+  const previaImg = document.querySelector(".previa-imagem");
+  if (previaImg) {
+    previaImg.classList.add("pacote-imagem-tipo");
+    previaImg.style.backgroundColor = vis.cor;
+    previaImg.innerHTML = `<span>${vis.emoji}</span>`;
+  }
 
   // Prévia do pacote (campos do back: data_inicio/data_fim ISO, estoque, destino).
   document.getElementById("previa-destino").textContent = local;
@@ -148,6 +162,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   vazio.hidden = true;
   conteudo.hidden = false;
+
+  // Limpar carrinho: remove o pacote reservado e volta ao estado vazio.
+  const btnLimpar = document.getElementById("btn-limpar-carrinho");
+  if (btnLimpar) {
+    btnLimpar.addEventListener("click", () => {
+      if (!confirm("Remover o pacote do carrinho?")) return;
+      localStorage.removeItem("pacote_reservado");
+      conteudo.hidden = true;
+      vazio.hidden = false;
+    });
+  }
 
   const form = document.getElementById("form-orcamento");
   const feedback = document.getElementById("carrinho-feedback");

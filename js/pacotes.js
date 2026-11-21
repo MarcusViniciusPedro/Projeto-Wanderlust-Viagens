@@ -50,21 +50,90 @@ function capitalizarTipo(tipo) {
   return tipo.charAt(0).toUpperCase() + tipo.slice(1);
 }
 
-function criarCard(pac) {
+// Identidade visual por tipo de viagem (sem depender de arquivos de imagem):
+// um emoji + cor de fundo representativos. Chave normalizada (minúsculas).
+const VISUAL_TIPO = {
+  praia: { emoji: "🏖️", cor: "#2a9d8f" },
+  serra: { emoji: "⛰️", cor: "#5f7470" },
+  cultural: { emoji: "🏛️", cor: "#8d6e63" },
+  relax: { emoji: "🧘", cor: "#5b8c9e" },
+  radical: { emoji: "🪂", cor: "#e76f51" },
+};
+
+function visualTipo(tipo) {
+  const v = VISUAL_TIPO[(tipo || "").toLowerCase()] || { emoji: "✈️", cor: "#0d3b66" };
+  return `<div class="pacote-imagem pacote-imagem-tipo" aria-hidden="true"
+    style="background-color:${v.cor}"><span>${v.emoji}</span></div>`;
+}
+
+function criarCard(pac, extra = "") {
   const art = document.createElement("article");
   art.className = "pacote-card";
   art.innerHTML = `
-    <div class="pacote-imagem" aria-hidden="true"></div>
+    ${visualTipo(pac.tipo_viagem)}
     <div class="pacote-corpo">
       <h2 class="pacote-nome">${pac.cidade} - ${pac.estado}</h2>
       <p class="pacote-tipo">${capitalizarTipo(pac.tipo_viagem)}</p>
       <p class="pacote-preco">${formatarMoeda(pac.preco_base)}</p>
+      ${extra}
       <button type="button" class="btn btn-primary w-100"
         data-bs-toggle="modal" data-bs-target="#modal-pacote-${pac.id_pacote}">
         Ver detalhes
       </button>
     </div>`;
   return art;
+}
+
+// Mostra os pacotes ordenados por aderência (ranking do AIV, RF7), com os
+// selos de aderência e de orçamento. Recebe as preferências pela URL.
+async function renderizarRecomendacao(pacotes, params, renderizarPadrao) {
+  const grade = document.getElementById("pacotes-grade");
+  const modais = document.getElementById("pacotes-modais");
+  const vazio = document.getElementById("pacotes-vazio");
+
+  if (!pacotes.length) {
+    renderizarPadrao([]);
+    return;
+  }
+
+  const preferencia = {
+    tipo_viagem: params.get("tipo_viagem") || null,
+    nivel: params.get("nivel") || null,
+    orcamento_max: params.get("orcamento_max") ? Number(params.get("orcamento_max")) : null,
+  };
+  const candidatos = pacotes.map((p) => ({
+    id_pacote: p.id_pacote,
+    preco_base: p.preco_base,
+    tipo_viagem: p.tipo_viagem,
+    nivel: p.nivel ?? null,
+    total_avaliacoes: 0,
+  }));
+
+  let ranking;
+  try {
+    ranking = await apiFetch("/recomendacao/ranking", {
+      method: "POST",
+      body: JSON.stringify({ preferencia, pacotes: candidatos }),
+    });
+  } catch (erro) {
+    // Falha no ranking: cai para a listagem comum.
+    renderizarPadrao(pacotes);
+    return;
+  }
+
+  grade.innerHTML = "";
+  modais.innerHTML = "";
+  for (const item of ranking) {
+    const pac = pacotes.find((p) => p.id_pacote === item.id_pacote);
+    if (!pac) continue;
+    const selo = item.dentro_do_orcamento
+      ? '<span class="rec-selo rec-ok">dentro do orçamento</span>'
+      : '<span class="rec-selo rec-fora">acima do orçamento</span>';
+    const extra = `<p class="rec-aderencia">Aderência ${Math.round(item.score * 100)}% ${selo}</p>`;
+    grade.appendChild(criarCard(pac, extra));
+    modais.appendChild(criarModal(pac));
+  }
+  if (vazio) vazio.hidden = ranking.length > 0;
 }
 
 function criarModal(pac) {
@@ -83,9 +152,7 @@ function criarModal(pac) {
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
         <div class="modal-body">
-          <div class="pacote-streetview" id="streetview-${pac.id_pacote}">
-            <div class="pacote-imagem streetview-placeholder">Carregando visualização do destino...</div>
-          </div>
+          ${visualTipo(pac.tipo_viagem)}
           <dl class="resumo-lista mt-3">
             <div class="resumo-linha"><dt>Tipo</dt><dd>${capitalizarTipo(pac.tipo_viagem)}</dd></div>
             <div class="resumo-linha"><dt>Data inicial</dt><dd>${pac.data_inicio}</dd></div>
@@ -100,25 +167,6 @@ function criarModal(pac) {
         </div>
       </div>
     </div>`;
-
-  // Carrega o Street View do destino na primeira vez que o modal abre (RF9).
-  let carregado = false;
-  div.addEventListener("show.bs.modal", async () => {
-    if (carregado) return;
-    carregado = true;
-    const alvo = div.querySelector(`#streetview-${pac.id_pacote}`);
-    try {
-      const sv = await apiFetch(`/catalogo/destinos/${pac.fk_destino}/streetview`);
-      // embed_html é um iframe pronto vindo do back; usamos ele diretamente.
-      alvo.innerHTML = sv.embed_html
-        ? sv.embed_html
-        : `<a href="${sv.url}" target="_blank" rel="noopener">Ver no Street View (${sv.local})</a>`;
-    } catch (erro) {
-      carregado = false; // permite nova tentativa ao reabrir
-      alvo.innerHTML =
-        `<div class="pacote-imagem streetview-placeholder">Não foi possível carregar a visualização do destino.</div>`;
-    }
-  });
 
   return div;
 }
@@ -182,7 +230,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   preencherEstados(document.getElementById("filtro-estado"), pacotes, filtros);
-  renderizar(aplicarFiltros(pacotes, filtros));
+
+  // Popula o select de tipo com os tipos reais dos pacotes (dinâmico).
+  const selTipo = document.getElementById("filtro-tipo");
+  if (selTipo) {
+    const tipos = [...new Set(pacotes.map((p) => p.tipo_viagem).filter(Boolean))].sort();
+    for (const t of tipos) {
+      const opt = document.createElement("option");
+      opt.value = t;
+      opt.textContent = capitalizarTipo(t);
+      if (t === filtros.tipo_viagem) opt.selected = true;
+      selTipo.appendChild(opt);
+    }
+  }
+
+  // Recomendação vinda da home (?recomendar=1): ranqueia por aderência e
+  // mostra os selos de aderência/orçamento, em vez da filtragem comum.
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("recomendar") === "1") {
+    await renderizarRecomendacao(pacotes, params, renderizar);
+  } else {
+    renderizar(aplicarFiltros(pacotes, filtros));
+  }
 
   // Permite refiltrar na própria página de pacotes.
   const form = document.getElementById("form-filtro");
