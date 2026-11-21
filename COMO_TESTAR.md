@@ -72,8 +72,10 @@ WANDERLUST_DB_PASSWORD=SuaSenha!123
 WANDERLUST_JWT_SECRET=qualquer-coisa-aleatoria-para-teste
 ```
 
-As demais variáveis (SMS, e-mail, pagamento, Street View) podem ficar **vazias**
-— rodam em modo stub. O CORS já vem liberado para o Live Server (porta 5500).
+As demais variáveis (SMS, pagamento) podem ficar **vazias** — rodam em modo
+stub. As integracoes de e-mail (RF6) e Street View (RF9) foram removidas do
+backend, entao nao ha variaveis dessas integracoes para configurar. O CORS ja
+vem liberado para o Live Server (porta 5500).
 
 Subir a API:
 

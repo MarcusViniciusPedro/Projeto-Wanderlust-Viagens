@@ -75,6 +75,7 @@ Pacotes de viagem comercializados.
 | estoque     | INT           | Não  |       | Quantidade disponível (>= 0).                           |
 | tipo_viagem | NVARCHAR(50)  | Sim  |       | **Extensão (RF3/RF7)**: tipo (Praia, Aventura, etc.).   |
 | nivel       | NVARCHAR(50)  | Sim  |       | **Extensão (RF3/RF7)**: nível (Econômico, Luxo, etc.).  |
+| fk_destino  | INT           | Não  | FK    | FK para `Destino(id_destino)` (NO ACTION). Todo pacote referencia um destino. |
 
 ---
 

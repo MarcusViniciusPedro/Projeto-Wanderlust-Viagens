@@ -18,7 +18,7 @@ GO
 INSERT INTO Destino (cidade, estado, pais, descricao) VALUES
     (N'Rio de Janeiro', N'RJ', N'Brasil',  N'Praias famosas e Pao de Acucar.'),
     (N'Gramado',        N'RS', N'Brasil',  N'Clima europeu na serra gaucha.'),
-    (N'Paris',          N'IDF',N'Franca',  N'Museus, gastronomia e arquitetura.');
+    (N'Sao Paulo',      N'SP', N'Brasil',  N'Metropole cultural e gastronomica, com museus e vida urbana.');
 
 -- 2) Usuarios  -> id 1 (turista), id 2 (colaborador)
 -- Lista de colunas explicita: a coluna status (extensao, secao 4.1) fica no
@@ -40,19 +40,19 @@ INSERT INTO Credencial (id_usuario, senha_hash, totp_secret, two_factor) VALUES
 INSERT INTO Pacote VALUES
     (2500.00, '2025-12-20', '2025-12-27', 10, N'Praia',    N'Conforto',  1),
     (1800.00, '2025-07-10', '2025-07-15', 5,  N'Serra',    N'Economico', 2),
-    (9800.00, '2026-05-01', '2026-05-12', 8,  N'Cultural', N'Luxo',      3);
+    (2200.00, '2026-05-01', '2026-05-05', 8,  N'Cultural', N'Conforto',  3);
 
 -- 4) Viagens (destinos 1,2,3)  -> ids 1, 2, 3
 INSERT INTO Viagem VALUES
     ('2025-12-20T08:00:00', '2025-12-20T10:00:00', N'Aviao',  N'2h',  1),
     ('2025-07-10T07:00:00', '2025-07-10T13:00:00', N'Onibus', N'6h',  2),
-    ('2026-05-01T22:00:00', '2026-05-02T13:00:00', N'Aviao',  N'11h', 3);
+    ('2026-05-01T08:00:00', '2026-05-01T09:30:00', N'Aviao',  N'1h30', 3);
 
 -- 5) Hospedagens (pacotes 1,2,3)  -> ids 1, 2, 3
 INSERT INTO Hospedagem VALUES
     (N'22010-000', N'Av. Atlantica',       1500, N'Hotel Copa Mar',  N'Duplo',    N'Meia pensao',     1),
     (N'95670-000', N'Rua das Hortensias',   200, N'Pousada Serrana', N'Standard', N'Cafe da manha',   2),
-    (N'75001',     N'Rue de Rivoli',         10, N'Hotel Louvre',    N'Suite',    N'Pensao completa', 3);
+    (N'01046-010', N'Avenida Ipiranga',      200, N'Edificio Copan',  N'Suite',    N'Cafe da manha',   3);
 
 -- 6) Preferencia e respostas do questionario do turista 1.
 -- Preferencia usa lista de colunas explicita (atualizado_em fica no DEFAULT).
