@@ -250,14 +250,20 @@ def atualizar_usuario(
 def excluir_usuario(
     id_passageiro: int, settings: Optional[Settings] = None
 ) -> Optional[UsuarioSaida]:
-    """Encerra a PROPRIA conta via SOFT DELETE/anonimizacao (LGPD/RNF3).
+    """Encerra a PROPRIA conta via HARD DELETE (decisao de produto).
 
-    Mesma politica da exclusao administrativa (FEAT-002): as FKs de dbo.Venda
-    para Conta_turista sao ON DELETE NO ACTION, entao um hard delete de um
-    Usuario com vendas violaria as FKs e apagaria o historico financeiro. Em
-    vez disso a conta e marcada como 'Banido' (estado terminal) e os campos
-    pessoais sao anonimizados, preservando a integridade das vendas. Retorna a
-    visao publica da conta anonimizada ou None quando o id nao existe.
+    A linha de dbo.Usuario e REALMENTE removida: a procedure
+    ``dbo.sp_excluir_usuario`` apaga, numa unica transacao e em ordem segura de
+    FK, todos os dependentes (Avaliacao/Preferencia/Questionario_Resposta, a
+    cadeia Passagem/Obtem/Venda, Conta_turista/Conta_colaborador, Credencial) e
+    por fim o proprio Usuario. O historico de compras daquele usuario e
+    removido de proposito, sobrepondo a antiga politica de soft delete (LGPD).
+
+    Como a linha deixa de existir, NAO chamamos ``buscar_usuario_por_id`` apos
+    o delete. Quando @@ROWCOUNT > 0, devolvemos uma representacao da conta
+    removida (nome 'Conta removida', campos pessoais nulos) montada a partir do
+    id conhecido, mantendo o shape da resposta para o frontend. Retorna None
+    quando @@ROWCOUNT == 0 (id nao existia).
     """
     conn = get_connection(settings)
     try:
@@ -271,7 +277,17 @@ def excluir_usuario(
 
     if afetadas == 0:
         return None
-    return buscar_usuario_por_id(id_passageiro, settings)
+    # A linha foi apagada; nao ha o que buscar. Monta a representacao da conta
+    # removida a partir do id, com campos pessoais nulos.
+    return UsuarioSaida(
+        id_passageiro=id_passageiro,
+        nome="Conta removida",
+        nome_social=None,
+        pronome=None,
+        email=None,
+        telefone=None,
+        papel=Papel.TURISTA,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -390,20 +406,24 @@ def alterar_status_conta(
 def excluir_conta(
     id_passageiro: int, settings: Optional[Settings] = None
 ) -> Optional[ContaAdminSaida]:
-    """Apaga uma conta via SOFT DELETE (anonimizacao), alinhado a LGPD/RNF3.
+    """Apaga uma conta via HARD DELETE (decisao de produto).
 
-    As FKs de dbo.Venda para Conta_turista/Conta_colaborador usam ON DELETE
-    NO ACTION; um hard delete de um Usuario com vendas violaria as FKs e
-    destruiria o historico financeiro. Em vez disso, a conta e marcada como
-    'Banido' (status terminal) e os campos pessoais sao anonimizados (nome,
-    email, cpf, cep, telefone, nome_social, pronome), preservando a integridade
-    referencial das vendas. Retorna a visao da conta anonimizada ou None quando
-    o id nao existe.
+    Usa a MESMA procedure do self-service: ``dbo.sp_excluir_usuario`` remove de
+    verdade a linha de dbo.Usuario, cascateando os dependentes em ordem segura
+    de FK numa unica transacao (Avaliacao/Preferencia/Questionario_Resposta,
+    cadeia Passagem/Obtem/Venda, Conta_turista/Conta_colaborador, Credencial) e,
+    por fim, o Usuario. O historico de compras daquele usuario e removido de
+    proposito, sobrepondo a antiga politica de soft delete (LGPD).
+
+    Como a linha deixa de existir, NAO chamamos ``buscar_conta`` apos o delete.
+    Quando @@ROWCOUNT > 0, devolvemos uma representacao da conta removida (nome
+    'Conta removida', status 'Banido', email nulo) montada a partir do id.
+    Retorna None quando @@ROWCOUNT == 0 (id nao existia).
     """
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
-        # Mesma procedure do self-service: a semantica de soft delete e identica.
+        # Mesma procedure do self-service: a semantica de hard delete e identica.
         cursor.execute("EXEC dbo.sp_excluir_usuario %s", (id_passageiro,))
         # Procedure sob SET NOCOUNT ON devolve SELECT @@ROWCOUNT; leia dai.
         afetadas = cursor.fetchone()[0]
@@ -413,4 +433,12 @@ def excluir_conta(
 
     if afetadas == 0:
         return None
-    return buscar_conta(id_passageiro, settings)
+    # A linha foi apagada; nao ha o que buscar. Monta a representacao (de
+    # moderacao) da conta removida a partir do id.
+    return ContaAdminSaida(
+        id_passageiro=id_passageiro,
+        nome="Conta removida",
+        email=None,
+        papel=Papel.TURISTA,
+        status=StatusConta.BANIDO,
+    )

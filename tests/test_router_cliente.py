@@ -12,7 +12,7 @@ tests/test_router_auth.py).
 Verificamos:
   (a) GET /auth/me retorna o perfil do dono do token;
   (b) PUT /auth/me atualiza apenas campos permitidos e NAO altera papel;
-  (c) DELETE /auth/me aplica a politica de soft delete/anonimizacao;
+  (c) DELETE /auth/me aplica o HARD DELETE (remove a conta do banco);
   (d) sem token -> 401; token sem id -> 401;
   (e) sem banco -> 503;
   (f) as rotas aparecem em GET /openapi.json.
@@ -56,20 +56,21 @@ class FakeUsuariosRepo:
         return atualizado
 
     def excluir_usuario(self, id_passageiro, settings=None):
-        perfil = self.perfis.get(id_passageiro)
+        # Hard delete: a linha some do "banco". Devolve a representacao da conta
+        # removida (nome 'Conta removida', campos pessoais nulos) montada a
+        # partir do id, mantendo o shape da resposta para o frontend.
+        perfil = self.perfis.pop(id_passageiro, None)
         if perfil is None:
             return None
-        anon = perfil.model_copy(
-            update={
-                "nome": "Conta removida",
-                "nome_social": None,
-                "pronome": None,
-                "email": None,
-                "telefone": None,
-            }
+        return UsuarioSaida(
+            id_passageiro=id_passageiro,
+            nome="Conta removida",
+            nome_social=None,
+            pronome=None,
+            email=None,
+            telefone=None,
+            papel=perfil.papel,
         )
-        self.perfis[id_passageiro] = anon
-        return anon
 
 
 # --------------------------------------------------------------------------
@@ -164,16 +165,17 @@ def test_put_me_nao_altera_papel(
     assert fake_usuarios.perfis[1].papel == Papel.TURISTA
 
 
-def test_delete_me_soft_delete_anonimiza(
+def test_delete_me_hard_delete_remove_conta(
     client: TestClient, fake_usuarios: FakeUsuariosRepo
 ):
     resp = client.delete("/auth/me", headers=_turista(1))
     assert resp.status_code == 200
     corpo = resp.json()
+    # Shape da resposta mantido: representacao da conta removida.
     assert corpo["nome"] == "Conta removida"
     assert corpo["email"] is None
-    # Soft delete: a conta ainda existe no "banco", anonimizada.
-    assert fake_usuarios.perfis[1].nome == "Conta removida"
+    # Hard delete: a conta NAO existe mais no "banco".
+    assert 1 not in fake_usuarios.perfis
 
 
 def test_me_sem_token_401(client: TestClient, fake_usuarios: FakeUsuariosRepo):

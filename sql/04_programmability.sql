@@ -194,32 +194,86 @@ BEGIN
 END;
 GO
 
--- sp_excluir_usuario: SOFT DELETE / anonimizacao de uma conta (LGPD/RNF3).
+-- sp_excluir_usuario: HARD DELETE de uma conta (decisao de produto).
 -- Compartilhada pelo self-service (DELETE /auth/me) e pela exclusao
 -- administrativa (DELETE /auth/admin/contas/{id}), que tem a MESMA semantica.
--- NAO e um hard delete: as FKs de dbo.Venda para Conta_turista usam
--- ON DELETE NO ACTION, entao apagar um Usuario com vendas violaria as FKs e
--- destruiria o historico financeiro. Em vez disso a conta vira 'Banido'
--- (estado terminal) e os campos pessoais sao anonimizados. Devolve @@ROWCOUNT
--- (linhas afetadas) como unico resultado.
+--
+-- Esta e uma EXCLUSAO REAL da linha em dbo.Usuario, substituindo o antigo
+-- soft delete/anonimizacao. Decisao de produto ('hard delete de conta'): o
+-- historico de compras daquele usuario e removido junto, de proposito,
+-- sobrepondo a justificativa anterior de LGPD por soft delete.
+--
+-- Como as FKs do schema sao ON DELETE NO ACTION, apagar o Usuario direto
+-- violaria as restricoes. Por isso removemos os dependentes ANTES, em ordem
+-- segura de FK, dentro de UMA transacao (SET XACT_ABORT ON + BEGIN TRAN /
+-- COMMIT com TRY/CATCH + ROLLBACK + THROW, espelhando sp_registrar_venda):
+--   1) Avaliacao, Preferencia, Questionario_Resposta  (fk_turista = @id);
+--      apagar Avaliacao dispara tr_avaliacao_atualiza_ia_feedback (ok).
+--   2) a cadeia de Venda das vendas onde fk_conta_turista = @id OU
+--      fk_conta_colaborador = @id: primeiro Passagem (fk_id_venda nessas
+--      vendas), depois Obtem (fk_Venda_id_venda nessas vendas), depois Venda.
+--   3) as especializacoes Conta_turista (id_turista=@id) e
+--      Conta_colaborador (id_colaborador=@id).
+--   4) Credencial (id_usuario=@id).
+--   5) por fim DELETE da propria linha em dbo.Usuario (id_passageiro=@id).
+--
+-- O @@ROWCOUNT do DELETE de Usuario e capturado IMEDIATAMENTE numa variavel
+-- (os deletes dependentes alteram @@ROWCOUNT) e devolvido como unico
+-- resultado, lido via fetchone()[0] no Python (0 -> id inexistente -> None).
 CREATE PROCEDURE sp_excluir_usuario
     @id_passageiro INT
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
-    UPDATE dbo.Usuario
-    SET status      = N'Banido',
-        nome        = N'Conta removida',
-        nome_social = NULL,
-        pronome     = NULL,
-        email       = NULL,
-        telefone    = NULL,
-        cep         = NULL,
-        cpf         = CONCAT('removido-', @id_passageiro)
-    WHERE id_passageiro = @id_passageiro;
+    BEGIN TRY
+        BEGIN TRANSACTION;
 
-    SELECT @@ROWCOUNT;  -- linhas afetadas, lidas via fetchone()[0] no Python
+        -- Vendas associadas ao usuario (como turista ou como colaborador).
+        DECLARE @vendas TABLE (id_venda INT PRIMARY KEY);
+        INSERT INTO @vendas (id_venda)
+        SELECT id_venda
+        FROM dbo.Venda
+        WHERE fk_conta_turista = @id_passageiro
+           OR fk_conta_colaborador = @id_passageiro;
+
+        -- 1) Dependentes diretos do turista.
+        DELETE FROM dbo.Avaliacao WHERE fk_turista = @id_passageiro;
+        DELETE FROM dbo.Preferencia WHERE fk_turista = @id_passageiro;
+        DELETE FROM dbo.Questionario_Resposta WHERE fk_turista = @id_passageiro;
+
+        -- 2) Cadeia de Venda em ordem segura: Passagem -> Obtem -> Venda.
+        DELETE FROM dbo.Passagem
+        WHERE fk_id_venda IN (SELECT id_venda FROM @vendas);
+
+        DELETE FROM dbo.Obtem
+        WHERE fk_Venda_id_venda IN (SELECT id_venda FROM @vendas);
+
+        DELETE FROM dbo.Venda
+        WHERE id_venda IN (SELECT id_venda FROM @vendas);
+
+        -- 3) Especializacoes de Usuario.
+        DELETE FROM dbo.Conta_turista WHERE id_turista = @id_passageiro;
+        DELETE FROM dbo.Conta_colaborador WHERE id_colaborador = @id_passageiro;
+
+        -- 4) Credencial (1:1 com Usuario).
+        DELETE FROM dbo.Credencial WHERE id_usuario = @id_passageiro;
+
+        -- 5) Por fim, a propria linha de Usuario. Captura o @@ROWCOUNT deste
+        -- DELETE imediatamente (os deletes acima ja alteraram @@ROWCOUNT).
+        DELETE FROM dbo.Usuario WHERE id_passageiro = @id_passageiro;
+        DECLARE @afetadas INT = @@ROWCOUNT;
+
+        COMMIT TRANSACTION;
+
+        SELECT @afetadas;  -- linhas afetadas, lidas via fetchone()[0] no Python
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        THROW;  -- repropaga o erro para o chamador
+    END CATCH
 END;
 GO
 

@@ -407,7 +407,6 @@ def test_listar_destinos_publico(
                 cidade="Rio de Janeiro",
                 estado="RJ",
                 pais="Brasil",
-                categoria="Praia",
                 descricao=None,
             )
         ]

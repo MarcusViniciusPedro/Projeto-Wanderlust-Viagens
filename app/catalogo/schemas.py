@@ -79,7 +79,6 @@ class DestinoCriar(BaseModel):
     cidade: str = Field(min_length=1, max_length=100)
     estado: str = Field(min_length=1, max_length=50)
     pais: str = Field(min_length=1, max_length=50)
-    categoria: Optional[str] = Field(default=None, max_length=50)
     descricao: Optional[str] = None
 
 
@@ -94,7 +93,6 @@ class DestinoSaida(BaseModel):
     cidade: str
     estado: str
     pais: str
-    categoria: Optional[str] = None
     descricao: Optional[str] = None
 
 

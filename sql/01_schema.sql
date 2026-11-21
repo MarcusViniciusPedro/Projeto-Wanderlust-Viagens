@@ -23,7 +23,6 @@ CREATE TABLE Destino (
     cidade     NVARCHAR(100) NOT NULL,
     estado     NVARCHAR(50) NOT NULL,
     pais       NVARCHAR(50) NOT NULL,
-    categoria  NVARCHAR(50) NULL,
     descricao  NVARCHAR(MAX) NULL,
     PRIMARY KEY (id_destino)
 )

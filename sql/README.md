@@ -85,9 +85,12 @@ As operações CRUD de escrita/leitura vivem em stored procedures em
 operações de cadastro pedidas são cobertas por procedures:
 
 - Usuário: `sp_atualizar_usuario` (alterar dados de cadastro; atualização
-  parcial e atômica, ver abaixo), `sp_excluir_usuario` (deletar conta, soft
-  delete/anonimização LGPD) e `sp_listar_usuarios` (consultar todos os
-  usuários).
+  parcial e atômica, ver abaixo), `sp_excluir_usuario` (deletar conta via
+  **hard delete** em transação: remove dependentes em ordem segura de FK
+  — Avaliacao/Preferencia/Questionario_Resposta, cadeia Passagem/Obtem/Venda,
+  Conta_turista/Conta_colaborador, Credencial — e a própria linha de Usuario;
+  o histórico de compras do usuário é removido junto, decisão de produto) e
+  `sp_listar_usuarios` (consultar todos os usuários).
 - Pacote: `sp_criar_pacote` (cadastrar), `sp_atualizar_pacote` (alterar),
   `sp_excluir_pacote` (deletar, hard delete) e `sp_listar_pacotes` (consultar
   todos; a filtragem RF3 permanece em Python).

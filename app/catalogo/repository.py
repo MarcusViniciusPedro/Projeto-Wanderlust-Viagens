@@ -234,15 +234,14 @@ def criar_destino(
         cursor.execute(
             """
             INSERT INTO dbo.Destino
-                (cidade, estado, pais, categoria, descricao)
+                (cidade, estado, pais, descricao)
             OUTPUT INSERTED.id_destino
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s)
             """,
             (
                 dados.cidade,
                 dados.estado,
                 dados.pais,
-                dados.categoria,
                 dados.descricao,
             ),
         )
@@ -256,7 +255,6 @@ def criar_destino(
         cidade=dados.cidade,
         estado=dados.estado,
         pais=dados.pais,
-        categoria=dados.categoria,
         descricao=dados.descricao,
     )
 
@@ -264,13 +262,13 @@ def criar_destino(
 def buscar_destino_completo(
     id_destino: int, settings: Optional[Settings] = None
 ) -> Optional[DestinoSaida]:
-    """Carrega um destino completo pelo id (inclui categoria e descricao)."""
+    """Carrega um destino completo pelo id (inclui descricao)."""
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT id_destino, cidade, estado, pais, categoria, descricao
+            SELECT id_destino, cidade, estado, pais, descricao
             FROM dbo.Destino
             WHERE id_destino = %s
             """,
@@ -287,8 +285,7 @@ def buscar_destino_completo(
         cidade=linha[1],
         estado=linha[2],
         pais=linha[3],
-        categoria=linha[4],
-        descricao=linha[5],
+        descricao=linha[4],
     )
 
 
@@ -299,7 +296,7 @@ def listar_destinos(settings: Optional[Settings] = None) -> List[DestinoSaida]:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT id_destino, cidade, estado, pais, categoria, descricao
+            SELECT id_destino, cidade, estado, pais, descricao
             FROM dbo.Destino
             ORDER BY id_destino
             """
@@ -314,8 +311,7 @@ def listar_destinos(settings: Optional[Settings] = None) -> List[DestinoSaida]:
             cidade=linha[1],
             estado=linha[2],
             pais=linha[3],
-            categoria=linha[4],
-            descricao=linha[5],
+            descricao=linha[4],
         )
         for linha in linhas
     ]
@@ -334,7 +330,6 @@ def atualizar_destino(
             SET cidade = %s,
                 estado = %s,
                 pais = %s,
-                categoria = %s,
                 descricao = %s
             WHERE id_destino = %s
             """,
@@ -342,7 +337,6 @@ def atualizar_destino(
                 dados.cidade,
                 dados.estado,
                 dados.pais,
-                dados.categoria,
                 dados.descricao,
                 id_destino,
             ),
@@ -359,7 +353,6 @@ def atualizar_destino(
         cidade=dados.cidade,
         estado=dados.estado,
         pais=dados.pais,
-        categoria=dados.categoria,
         descricao=dados.descricao,
     )
 

@@ -3,7 +3,10 @@ stored procedures (FEAT-002).
 
 As quatro funcoes refatoradas (``atualizar_usuario``, ``excluir_usuario``,
 ``excluir_conta``, ``listar_contas``) deixaram de usar SQL inline e passaram a
-chamar procedures via ``EXEC``. Aqui um ``FakeCursor``/``FakeConnection`` em
+chamar procedures via ``EXEC``. A exclusao agora e um HARD DELETE (decisao de
+produto): a procedure remove a linha de Usuario cascateando os dependentes, e o
+codigo NAO le mais o perfil/conta apos o delete (a linha some) - ele monta uma
+representacao da conta removida a partir do id. Aqui um ``FakeCursor``/``FakeConnection`` em
 memoria grava as instrucoes executadas e devolve resultados programados, sem
 nenhum SQL Server vivo. Monkeypatchamos ``get_connection`` COMO IMPORTADO em
 ``app.usuarios.repository`` (o nome que o modulo realmente usa).
@@ -205,39 +208,50 @@ def test_atualizar_usuario_sem_campos_devolve_perfil_atual(monkeypatch):
 
 
 # --------------------------------------------------------------------------
-# excluir_usuario / excluir_conta (soft delete via mesma procedure)
+# excluir_usuario / excluir_conta (HARD DELETE via mesma procedure)
 # --------------------------------------------------------------------------
+# A procedure sp_excluir_usuario agora remove de verdade a linha de Usuario
+# (cascata de dependentes em ordem segura de FK, decisao de produto). Como a
+# linha deixa de existir, o codigo NAO pode mais chamar buscar_usuario_por_id/
+# buscar_conta apos o delete: ele monta a representacao da conta removida a
+# partir do id. Os testes abaixo garantem (a) o EXEC da procedure + leitura do
+# @@ROWCOUNT via fetchone()[0], (b) a representacao devolvida quando ha linha
+# afetada, (c) None quando @@ROWCOUNT == 0, e (d) que buscar_* NAO e chamado.
 
 
 def test_excluir_usuario_exec_sp_excluir(monkeypatch):
     cursor = FakeCursor(fetchone_seq=[(1,)], fetchall_seq=[])
     conn = _instalar_conn(monkeypatch, cursor)
 
-    from app.usuarios.schemas import UsuarioSaida
-
+    # Hard delete: a linha some, entao o codigo NAO pode ler o perfil depois.
+    # Se chamar buscar_usuario_por_id, o teste falha de proposito.
     monkeypatch.setattr(
         repo,
         "buscar_usuario_por_id",
-        lambda id_passageiro, settings=None: UsuarioSaida(
-            id_passageiro=id_passageiro,
-            nome="Conta removida",
-            papel=Papel.TURISTA,
+        lambda *a, **k: pytest.fail(
+            "hard delete nao deve buscar o perfil apos o delete"
         ),
     )
 
     saida = repo.excluir_usuario(42)
     assert saida is not None
+    # Representacao da conta removida montada a partir do id, sem dados pessoais.
+    assert saida.id_passageiro == 42
+    assert saida.nome == "Conta removida"
+    assert saida.email is None
+    assert saida.telefone is None
     sql, params = cursor.execucoes[0]
     assert "EXEC dbo.sp_excluir_usuario" in sql
     assert params == (42,)
+    # Houve apenas o EXEC da procedure (nenhuma leitura pos-delete).
+    assert len(cursor.execucoes) == 1
     assert conn.commits == 1
 
 
 def test_excluir_usuario_zero_linhas_retorna_none(monkeypatch):
     cursor = FakeCursor(fetchone_seq=[(0,)], fetchall_seq=[])
     _instalar_conn(monkeypatch, cursor)
-    # buscar_usuario_por_id NAO deve ser chamado quando 0 linhas; se for,
-    # devolveria algo nao-None e o assert de None quebraria.
+    # buscar_usuario_por_id NAO deve ser chamado; se for, o teste falha.
     monkeypatch.setattr(
         repo,
         "buscar_usuario_por_id",
@@ -250,23 +264,26 @@ def test_excluir_conta_usa_mesma_procedure(monkeypatch):
     cursor = FakeCursor(fetchone_seq=[(1,)], fetchall_seq=[])
     _instalar_conn(monkeypatch, cursor)
 
+    # Hard delete: nao pode ler a conta apos o delete.
     monkeypatch.setattr(
         repo,
         "buscar_conta",
-        lambda id_passageiro, settings=None: ContaAdminSaida(
-            id_passageiro=id_passageiro,
-            nome="Conta removida",
-            papel=Papel.TURISTA,
-            status=StatusConta.BANIDO,
+        lambda *a, **k: pytest.fail(
+            "hard delete nao deve buscar a conta apos o delete"
         ),
     )
 
     saida = repo.excluir_conta(5)
     assert saida is not None
+    assert saida.id_passageiro == 5
+    assert saida.nome == "Conta removida"
+    assert saida.email is None
+    # Status terminal 'Banido' preservado na representacao de moderacao.
     assert saida.status is StatusConta.BANIDO
     sql, params = cursor.execucoes[0]
     assert "EXEC dbo.sp_excluir_usuario" in sql  # MESMA procedure do self-service
     assert params == (5,)
+    assert len(cursor.execucoes) == 1
 
 
 def test_excluir_conta_zero_linhas_retorna_none(monkeypatch):

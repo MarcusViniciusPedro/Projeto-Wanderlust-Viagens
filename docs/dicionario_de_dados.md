@@ -24,7 +24,6 @@ Destinos turísticos oferecidos.
 | cidade      | NVARCHAR(100)  | Não  |       | Cidade do destino.                          |
 | estado      | NVARCHAR(50)   | Não  |       | Estado/província.                           |
 | pais        | NVARCHAR(50)   | Não  |       | País.                                       |
-| categoria   | NVARCHAR(50)   | Sim  |       | Categoria (ex.: Praia, Serra, Cultural).    |
 | descricao   | NVARCHAR(MAX)  | Sim  |       | Descrição livre (era `TEXT` no MySQL).      |
 
 ---
@@ -45,7 +44,7 @@ Pessoa cadastrada (base para turista e colaborador).
 | email           | NVARCHAR(254) | Sim  | UQ    | **Extensão (RF1/RF2)**: e-mail de login/contato (único).|
 | telefone        | NVARCHAR(20)  | Sim  |       | **Extensão (RNF3)**: telefone para SMS 2FA.             |
 | papel           | NVARCHAR(20)  | Não  |       | **Extensão**: papel (`Turista`/`Agente`/`Administrador`). |
-| status          | NVARCHAR(20)  | Não  |       | **Extensão (seção 4.1/RNF3)**: estado da conta (`Ativo`/`Banido`/`Denunciado`) — CHECK, DEFAULT `Ativo`. Suporta o *Gerenciar Contas* do admin (banir/denunciar/reativar) e o *soft delete* (anonimização) sem expor dados pessoais. |
+| status          | NVARCHAR(20)  | Não  |       | **Extensão (seção 4.1/RNF3)**: estado da conta (`Ativo`/`Banido`/`Denunciado`) — CHECK, DEFAULT `Ativo`. Suporta o *Gerenciar Contas* do admin (banir/denunciar/reativar). O valor `Banido` continua em uso pela ação de banir (PATCH status); apenas o caminho de exclusão mudou: a exclusão de conta agora é *hard delete* (a linha é removida), não mais soft delete. |
 
 ---
 
@@ -255,7 +254,7 @@ Feedback agregado pelo AIV por pacote (RF8). Atualizada por trigger.
 | `vw_turistas_por_destino_ano`          | View       | Incidência de turistas por destino e ano (suporte a RF10).               |
 | `sp_registrar_venda`                   | Procedure  | Registra Venda + Obtem e baixa estoque em transação atômica.             |
 | `sp_atualizar_usuario`                 | Procedure  | Atualiza o próprio perfil de forma parcial e atômica (COALESCE por coluna, `NULL` = não alterar) + `@@ROWCOUNT`. |
-| `sp_excluir_usuario`                   | Procedure  | Soft delete/anonimização de conta (LGPD/RNF3), retorna `@@ROWCOUNT`.     |
+| `sp_excluir_usuario`                   | Procedure  | **Hard delete** de conta em transação: remove dependentes em ordem segura de FK (Avaliacao/Preferencia/Questionario_Resposta, cadeia Passagem/Obtem/Venda, Conta_turista/Conta_colaborador, Credencial) e a linha de Usuario; retorna o `@@ROWCOUNT` do delete de Usuario. O histórico de compras do usuário é removido junto (decisão de produto). |
 | `sp_listar_usuarios`                   | Procedure  | Lista contas para moderação, sem campos pessoais sensíveis (RNF3).       |
 | `sp_criar_pacote`                      | Procedure  | Cadastra um pacote e retorna o id gerado (`SCOPE_IDENTITY`).             |
 | `sp_atualizar_pacote`                  | Procedure  | Altera um pacote existente (UPDATE completo), retorna `@@ROWCOUNT`.      |

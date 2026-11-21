@@ -112,18 +112,18 @@ class FakeUsuariosRepo:
         return atualizada
 
     def excluir_conta(self, id_passageiro, settings=None):
-        conta = self.contas.get(id_passageiro)
+        # Hard delete: a linha some do "banco". Devolve a representacao da conta
+        # removida (status 'Banido', email nulo) montada a partir do id.
+        conta = self.contas.pop(id_passageiro, None)
         if conta is None:
             return None
-        anon = conta.model_copy(
-            update={
-                "status": StatusConta.BANIDO,
-                "nome": "Conta removida",
-                "email": None,
-            }
+        return ContaAdminSaida(
+            id_passageiro=id_passageiro,
+            nome="Conta removida",
+            email=None,
+            papel=conta.papel,
+            status=StatusConta.BANIDO,
         )
-        self.contas[id_passageiro] = anon
-        return anon
 
 
 # --------------------------------------------------------------------------
@@ -208,7 +208,6 @@ _DESTINO_PAYLOAD = {
     "cidade": "Rio de Janeiro",
     "estado": "RJ",
     "pais": "Brasil",
-    "categoria": "Praia",
     "descricao": "Praias famosas.",
 }
 
@@ -309,16 +308,28 @@ def test_admin_altera_status_conta(
     assert fake_usuarios.contas[1].status == StatusConta.BANIDO
 
 
-def test_admin_exclui_conta_soft_delete(
+def test_admin_exclui_conta_hard_delete(
     client: TestClient, fake_usuarios: FakeUsuariosRepo
 ):
     resp = client.delete("/auth/admin/contas/1", headers=_admin(id_usuario=99))
     assert resp.status_code == 200
     corpo = resp.json()
+    # Shape da resposta mantido: representacao (sem dados pessoais) da conta
+    # removida; o frontend admin.js apenas recarrega a lista.
     assert corpo["status"] == "Banido"
+    assert corpo["nome"] == "Conta removida"
     assert "cpf" not in corpo
-    # Soft delete: a conta ainda existe no "banco", anonimizada.
-    assert fake_usuarios.contas[1].status == StatusConta.BANIDO
+    # Hard delete: a conta NAO existe mais no "banco".
+    assert 1 not in fake_usuarios.contas
+
+
+def test_admin_exclui_conta_inexistente_404(
+    client: TestClient, fake_usuarios: FakeUsuariosRepo
+):
+    # id que nao existe: a guarda busca a conta (None) e devolve 404 antes de
+    # tentar o delete, espelhando @@ROWCOUNT == 0 -> None -> 404.
+    resp = client.delete("/auth/admin/contas/999", headers=_admin(id_usuario=1))
+    assert resp.status_code == 404
 
 
 def test_conta_inexistente_404(client: TestClient, fake_usuarios: FakeUsuariosRepo):

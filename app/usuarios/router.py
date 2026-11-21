@@ -207,12 +207,15 @@ def atualizar_perfil(
 def excluir_perfil(
     usuario_atual: UsuarioAtual = Depends(requer_autenticacao),
 ) -> UsuarioSaida:
-    """Encerra a PROPRIA conta via SOFT DELETE/anonimizacao (self-service).
+    """Encerra a PROPRIA conta via HARD DELETE (self-service).
 
-    Mesma politica da exclusao administrativa (FEAT-002): as FKs de dbo.Venda
-    sao ON DELETE NO ACTION, entao a conta e marcada como 'Banido' e tem os
-    dados pessoais anonimizados, preservando o historico de vendas e alinhando
-    a LGPD. Opera sobre o id_passageiro do JWT.
+    Decisao de produto ('hard delete de conta'): a linha de dbo.Usuario e
+    REALMENTE removida pela procedure sp_excluir_usuario, que cascateia os
+    dependentes em ordem segura de FK numa unica transacao (Avaliacao,
+    Preferencia, Questionario_Resposta, a cadeia Passagem/Obtem/Venda,
+    Conta_turista/Conta_colaborador e Credencial). O historico de compras
+    daquele usuario e removido de proposito. A resposta mantem o mesmo shape
+    (representacao da conta removida). Opera sobre o id_passageiro do JWT.
     """
     id_passageiro = _id_do_token(usuario_atual)
     try:
@@ -347,14 +350,15 @@ def excluir_conta(
     id_passageiro: int,
     usuario_atual: UsuarioAtual = Depends(requer_autenticacao),
 ) -> ContaAdminSaida:
-    """Apaga uma conta via SOFT DELETE/anonimizacao (Gerenciar Contas, 4.1).
+    """Apaga uma conta via HARD DELETE (Gerenciar Contas, 4.1).
 
-    Escolha de projeto (documentada tambem no repository e nas FEAT findings):
-    as FKs de dbo.Venda sao ON DELETE NO ACTION, entao um hard delete de um
-    Usuario com vendas violaria as FKs e destruiria o historico financeiro.
-    Por isso a conta e marcada como 'Banido' e tem os campos pessoais
-    anonimizados, preservando a integridade das vendas e alinhando-se a LGPD.
-    Retorna a visao (sem dados pessoais) da conta anonimizada.
+    Decisao de produto ('hard delete de conta'): a linha de dbo.Usuario e
+    REALMENTE removida pela procedure sp_excluir_usuario, que cascateia os
+    dependentes em ordem segura de FK numa unica transacao (Avaliacao,
+    Preferencia, Questionario_Resposta, a cadeia Passagem/Obtem/Venda,
+    Conta_turista/Conta_colaborador e Credencial). O historico de compras
+    daquele usuario e removido de proposito. Retorna a representacao (sem dados
+    pessoais) da conta removida, mantendo o shape da resposta.
 
     Guarda anti-lockout: um admin nao pode excluir a PROPRIA conta (403) e o
     ultimo administrador ativo nao pode ser excluido (409).

@@ -15,10 +15,10 @@ USE agencia_viagens;
 GO
 
 -- 1) Destinos  -> ids 1, 2, 3
-INSERT INTO Destino VALUES
-    (N'Rio de Janeiro', N'RJ', N'Brasil',  N'Praia',    N'Praias famosas e Pao de Acucar.'),
-    (N'Gramado',        N'RS', N'Brasil',  N'Serra',    N'Clima europeu na serra gaucha.'),
-    (N'Paris',          N'IDF',N'Franca',  N'Cultural', N'Museus, gastronomia e arquitetura.');
+INSERT INTO Destino (cidade, estado, pais, descricao) VALUES
+    (N'Rio de Janeiro', N'RJ', N'Brasil',  N'Praias famosas e Pao de Acucar.'),
+    (N'Gramado',        N'RS', N'Brasil',  N'Clima europeu na serra gaucha.'),
+    (N'Paris',          N'IDF',N'Franca',  N'Museus, gastronomia e arquitetura.');
 
 -- 2) Usuarios  -> id 1 (turista), id 2 (colaborador)
 -- Lista de colunas explicita: a coluna status (extensao, secao 4.1) fica no
