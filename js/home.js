@@ -1,11 +1,36 @@
-// Barra de busca da home. Usa PACOTES de js/pacotes-dados.js.
-// O formulário usa GET para pages/pacotes.html, então os filtros vão na URL
-// nativamente; aqui só preenchemos o select de estado e o texto do slider.
+// Barra de busca e recomendação da home. Consome o banco via apiFetch:
+//   GET /catalogo/pacotes   -> para o select de tipo e a recomendação (RF7)
+//   GET /catalogo/destinos  -> para o select de destino (estados reais)
+// O formulário de busca usa GET para pages/pacotes.html (filtros na URL).
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  const moeda = (v) =>
+    Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  // Slider de valor máximo.
+  const valor = document.getElementById("busca-valor");
+  const saida = document.getElementById("busca-valor-saida");
+  if (valor && saida) {
+    const atualizar = () => { saida.textContent = moeda(Number(valor.value)); };
+    valor.addEventListener("input", atualizar);
+    atualizar();
+  }
+
+  // Carrega pacotes e destinos do banco (tolerante a falha de rede).
+  let pacotes = [];
+  let destinos = [];
+  try {
+    const res = await apiFetch("/catalogo/pacotes");
+    pacotes = res.pacotes || [];
+  } catch (_) { /* segue com lista vazia */ }
+  try {
+    destinos = await apiFetch("/catalogo/destinos");
+  } catch (_) { /* segue com lista vazia */ }
+
+  // Select de destino (estados reais dos destinos cadastrados).
   const selectEstado = document.getElementById("busca-estado");
-  if (selectEstado && typeof PACOTES !== "undefined") {
-    const estados = [...new Set(PACOTES.map((p) => p.estado))].sort();
+  if (selectEstado) {
+    const estados = [...new Set(destinos.map((d) => d.estado))].sort();
     for (const uf of estados) {
       const opt = document.createElement("option");
       opt.value = uf;
@@ -14,38 +39,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  const valor = document.getElementById("busca-valor");
-  const saida = document.getElementById("busca-valor-saida");
-  if (valor && saida) {
-    const atualizar = () => {
-      saida.textContent = Number(valor.value).toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-      });
-    };
-    valor.addEventListener("input", atualizar);
-    atualizar();
+  // Select de tipo de viagem (tipos reais presentes nos pacotes).
+  const selectTipo = document.getElementById("busca-tipo");
+  if (selectTipo) {
+    const tipos = [...new Set(pacotes.map((p) => p.tipo_viagem).filter(Boolean))].sort();
+    // Mantém a opção "Todos" (primeira) e substitui as demais pelas reais.
+    for (const t of tipos) {
+      const opt = document.createElement("option");
+      opt.value = t;
+      opt.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+      selectTipo.appendChild(opt);
+    }
   }
 
   // --- Recomendação (RF7): POST /recomendacao/ranking -------------------
   const formRec = document.getElementById("form-recomendacao");
-  if (formRec && typeof PACOTES !== "undefined") {
+  if (formRec) {
     const feedbackRec = document.getElementById("recomendacao-feedback");
     const listaRec = document.getElementById("recomendacao-lista");
     const btnRec = document.getElementById("btn-recomendar");
 
-    const moeda = (v) =>
-      Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
     formRec.addEventListener("submit", async (evento) => {
       evento.preventDefault();
 
-      // Candidatos: os pacotes estáticos. Sem avaliações, o componente de
+      if (!pacotes.length) {
+        feedbackRec.textContent = "Não há pacotes disponíveis para recomendar.";
+        feedbackRec.classList.add("feedback-erro");
+        feedbackRec.hidden = false;
+        return;
+      }
+
+      // Candidatos: pacotes do banco. Sem avaliações, o componente de
       // reputação do back cai no neutro (0.5) para todos.
-      const pacotes = PACOTES.map((p) => ({
-        id_pacote: p.id,
+      const candidatos = pacotes.map((p) => ({
+        id_pacote: p.id_pacote,
         preco_base: p.preco_base,
-        tipo_viagem: p.tipo,
+        tipo_viagem: p.tipo_viagem,
         nivel: p.nivel ?? null,
         total_avaliacoes: 0,
       }));
@@ -64,13 +93,13 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const ranking = await apiFetch("/recomendacao/ranking", {
           method: "POST",
-          body: JSON.stringify({ preferencia, pacotes }),
+          body: JSON.stringify({ preferencia, pacotes: candidatos }),
         });
 
         listaRec.innerHTML = ranking
           .map((item) => {
-            const pac = PACOTES.find((p) => p.id === item.id_pacote);
-            const nome = pac ? `${pac.cidade} - ${pac.estado}` : `Pacote ${item.id_pacote}`;
+            const pac = pacotes.find((p) => p.id_pacote === item.id_pacote);
+            const nome = pac && pac.cidade ? `${pac.cidade} - ${pac.estado}` : `Pacote ${item.id_pacote}`;
             const preco = pac ? ` — ${moeda(pac.preco_base)}` : "";
             const selo = item.dentro_do_orcamento
               ? '<span class="rec-selo rec-ok">dentro do orçamento</span>'

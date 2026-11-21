@@ -1,6 +1,6 @@
 // Carrinho: lê o pacote reservado (localStorage "pacote_reservado"),
 // mostra a prévia, calcula o orçamento (RF4) e registra a compra (RF5) se o
-// cliente estiver logado. Usa PACOTES de js/pacotes-dados.js e apiFetch de api.js.
+// cliente estiver logado. Busca o pacote no banco (GET /catalogo/pacotes/{id}).
 
 // Fatores do AIV (espelham app/recomendacao/service.py) — usados apenas para
 // MOSTRAR ao cliente como o cálculo é feito. O valor oficial vem do back-end.
@@ -97,39 +97,54 @@ document.addEventListener("DOMContentLoaded", () => {
   const conteudo = document.getElementById("carrinho-conteudo");
 
   const idReservado = Number(localStorage.getItem("pacote_reservado"));
-  const pacote =
-    typeof PACOTES !== "undefined" ? PACOTES.find((p) => p.id === idReservado) : null;
 
-  if (!pacote) {
+  // Carrinho vazio: sem pacote reservado.
+  if (!idReservado) {
     vazio.hidden = false;
     conteudo.hidden = true;
     return;
   }
 
-  // Prévia do pacote.
-  document.getElementById("previa-destino").textContent = `${pacote.cidade} - ${pacote.estado}`;
-  document.getElementById("previa-tipo").textContent = capitalizar(pacote.tipo);
+  // Busca o pacote real no banco (GET /catalogo/pacotes/{id}).
+  let pacote;
+  try {
+    pacote = await apiFetch(`/catalogo/pacotes/${idReservado}`);
+  } catch (erro) {
+    // Pacote não existe mais (ex.: removido) ou falha de rede.
+    localStorage.removeItem("pacote_reservado");
+    vazio.hidden = false;
+    conteudo.hidden = true;
+    return;
+  }
+
+  const local =
+    pacote.cidade ? `${pacote.cidade} - ${pacote.estado}` : `Pacote ${pacote.id_pacote}`;
+
+  // Prévia do pacote (campos do back: data_inicio/data_fim ISO, estoque, destino).
+  document.getElementById("previa-destino").textContent = local;
+  document.getElementById("previa-tipo").textContent =
+    pacote.tipo_viagem ? capitalizar(pacote.tipo_viagem) : "—";
   document.getElementById("previa-periodo").textContent = `${pacote.data_inicio} a ${pacote.data_fim}`;
   document.getElementById("previa-preco").textContent = formatarMoeda(pacote.preco_base);
-  document.getElementById("previa-vagas").textContent = pacote.vagas;
+  document.getElementById("previa-vagas").textContent = pacote.estoque;
 
-  // Limita as datas ao período de oferta do pacote.
+  // Limita as datas ao período de oferta do pacote (datas ISO do back).
   const campoInicio = document.getElementById("data_inicio");
   const campoFim = document.getElementById("data_fim");
   for (const campo of [campoInicio, campoFim]) {
-    campo.min = pacote.inicio_iso;
-    campo.max = pacote.fim_iso;
+    campo.min = pacote.data_inicio;
+    campo.max = pacote.data_fim;
   }
-  campoInicio.value = pacote.inicio_iso;
-  campoFim.value = pacote.fim_iso;
+  campoInicio.value = pacote.data_inicio;
+  campoFim.value = pacote.data_fim;
   document.getElementById("ajuda-datas").textContent =
     `Entre ${pacote.data_inicio} e ${pacote.data_fim}.`;
 
-  // Limita pessoas às vagas.
+  // Limita pessoas ao estoque.
   const campoPessoas = document.getElementById("numero_pessoas");
-  campoPessoas.max = pacote.vagas;
+  campoPessoas.max = pacote.estoque;
   document.getElementById("ajuda-pessoas").textContent =
-    `Máximo de ${pacote.vagas} pessoa(s), conforme as vagas do pacote.`;
+    `Máximo de ${pacote.estoque} pessoa(s), conforme as vagas do pacote.`;
 
   vazio.hidden = true;
   conteudo.hidden = false;
@@ -167,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const fimIso = campoFim.value;
 
     // Validações de data contra o período de oferta.
-    if (inicioIso < pacote.inicio_iso || fimIso > pacote.fim_iso) {
+    if (inicioIso < pacote.data_inicio || fimIso > pacote.data_fim) {
       mostrarFeedback(feedback, `As datas devem ficar entre ${pacote.data_inicio} e ${pacote.data_fim}.`, "erro");
       return;
     }
@@ -177,8 +192,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const pessoas = Number(campoPessoas.value);
-    if (pessoas > pacote.vagas) {
-      mostrarFeedback(feedback, `Há apenas ${pacote.vagas} vaga(s) neste pacote.`, "erro");
+    if (pessoas > pacote.estoque) {
+      mostrarFeedback(feedback, `Há apenas ${pacote.estoque} vaga(s) neste pacote.`, "erro");
       return;
     }
 
@@ -237,7 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Logado: monta o resumo do pedido e revela as opções de pagamento.
     resumoPedido.innerHTML = [
-      ["Destino", `${pacote.cidade} - ${pacote.estado}`],
+      ["Destino", local],
       ["Período escolhido", `${pedidoAtual.inicioIso} a ${pedidoAtual.fimIso} (${pedidoAtual.dias} dia(s))`],
       ["Pessoas", pedidoAtual.pessoas],
       ["Regime", ROTULO_REGIME[pedidoAtual.regime]],
@@ -278,7 +293,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const dados = {
       fk_conta_turista: fkTurista,
-      fk_pacote: pacote.id,
+      fk_pacote: pacote.id_pacote,
       valor_total: totalCalculado,
       forma_pagamento: formConfirmar.elements["forma_pagamento"].value,
     };

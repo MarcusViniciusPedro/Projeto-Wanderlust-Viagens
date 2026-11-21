@@ -211,7 +211,13 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="hospedagem-quarto" class="form-label">Tipo de quarto</label>
-                                <input type="text" class="form-control" id="hospedagem-quarto" name="tipo_quarto" maxlength="50">
+                                <select class="form-select" id="hospedagem-quarto" name="tipo_quarto">
+                                    <option value="">—</option>
+                                    <option value="Standard">Standard</option>
+                                    <option value="Duplo">Duplo</option>
+                                    <option value="Suíte">Suíte</option>
+                                    <option value="Luxo">Luxo</option>
+                                </select>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="hospedagem-regime" class="form-label">Regime de alimentação</label>
