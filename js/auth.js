@@ -1,95 +1,194 @@
-// Fluxo de login em duas etapas (2FA) usando o helper apiFetch de js/api.js.
-//
-// Etapa 1: POST /auth/login {email, senha} -> {desafio_2fa, token_desafio, detalhe}
-// Etapa 2: POST /auth/2fa/verificar {token_desafio, codigo} -> {access_token, token_type, papel}
-//
-// Observacao: /auth/* dependem do banco. Sem SQL Server configurado o backend
-// responde HTTP 503 e a mensagem (erro.detail) e exibida ao usuario.
+// Cadastro de usuário (RF1): envia o formulário para POST /auth/cadastro.
+// Usa apiFetch() definido em js/api.js.
 
-(function () {
-  "use strict";
+function cadastrarUsuario(dados) {
+  return apiFetch("/auth/cadastro", {
+    method: "POST",
+    body: JSON.stringify(dados),
+  });
+}
 
-  // Guarda o desafio emitido na etapa 1 para reapresentar na etapa 2.
-  let tokenDesafio = null;
+// Lê os campos do formulário e monta o corpo esperado pela API.
+// Campos opcionais em branco são omitidos (o back-end aceita ausência).
+function coletarDadosCadastro(form) {
+  const valor = (nome) => form.elements[nome].value.trim();
 
-  const formLogin = document.getElementById("form-login");
-  const form2fa = document.getElementById("form-2fa");
-  const caixaMsg = document.getElementById("login-msg");
+  const dados = {
+    nome: valor("nome"),
+    data_nascimento: valor("data_nascimento"), // formato YYYY-MM-DD (input date)
+    cpf: valor("cpf"),
+    email: valor("email"),
+    senha: form.elements["senha"].value,
+  };
 
-  // Se a pagina nao tiver o markup esperado, nao faz nada.
-  if (!formLogin || !form2fa) {
-    return;
+  for (const opcional of ["nome_social", "pronome", "cep", "telefone"]) {
+    const v = valor(opcional);
+    if (v) dados[opcional] = v;
   }
 
-  function mostrarMensagem(texto, tipo) {
-    if (!caixaMsg) {
+  return dados;
+}
+
+function mostrarFeedback(caixa, mensagem, tipo) {
+  caixa.textContent = mensagem;
+  caixa.classList.remove("feedback-erro", "feedback-ok");
+  caixa.classList.add(tipo === "ok" ? "feedback-ok" : "feedback-erro");
+  caixa.hidden = false;
+}
+
+// Login em duas etapas (RF2):
+//   Etapa 1 -> POST /auth/login devolve um token_desafio.
+//   Etapa 2 -> POST /auth/2fa/verificar troca token_desafio + código pelo JWT.
+function iniciarLogin(email, senha) {
+  return apiFetch("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, senha }),
+  });
+}
+
+function verificar2fa(tokenDesafio, codigo) {
+  return apiFetch("/auth/2fa/verificar", {
+    method: "POST",
+    body: JSON.stringify({ token_desafio: tokenDesafio, codigo }),
+  });
+}
+
+function inicializarCadastro() {
+  const form = document.getElementById("form-cadastro");
+  if (!form) return;
+
+  const feedback = document.getElementById("cadastro-feedback");
+  const botao = document.getElementById("btn-cadastrar");
+
+  form.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+
+    if (!form.checkValidity()) {
+      form.reportValidity();
       return;
     }
-    caixaMsg.textContent = texto;
-    caixaMsg.hidden = false;
-    caixaMsg.classList.remove("login-msg-erro", "login-msg-sucesso");
-    if (tipo === "erro") {
-      caixaMsg.classList.add("login-msg-erro");
-    } else if (tipo === "sucesso") {
-      caixaMsg.classList.add("login-msg-sucesso");
-    }
-  }
 
-  formLogin.addEventListener("submit", async function (evento) {
-    evento.preventDefault();
-    const email = document.getElementById("login-email").value.trim();
-    const senha = document.getElementById("login-senha").value;
+    botao.disabled = true;
+    feedback.hidden = true;
 
     try {
-      const resposta = await apiFetch("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, senha }),
-      });
-      // Etapa 1 concluida: guarda o desafio e revela a etapa 2.
+      const usuario = await cadastrarUsuario(coletarDadosCadastro(form));
+      const nome = usuario.nome_social || usuario.nome || "";
+      mostrarFeedback(
+        feedback,
+        `Cadastro concluído com sucesso${nome ? `, ${nome}` : ""}! Redirecionando para o login...`,
+        "ok"
+      );
+      form.reset();
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 1500);
+    } catch (erro) {
+      mostrarFeedback(
+        feedback,
+        erro.message || "Não foi possível concluir o cadastro. Tente novamente.",
+        "erro"
+      );
+      botao.disabled = false;
+    }
+  });
+}
+
+function inicializarLogin() {
+  const formLogin = document.getElementById("form-login");
+  if (!formLogin) return;
+
+  const form2fa = document.getElementById("form-2fa");
+  const feedback = document.getElementById("login-feedback");
+  const btnLogin = document.getElementById("btn-login");
+  const btn2fa = document.getElementById("btn-2fa");
+  const voltar = document.getElementById("voltar-login");
+
+  let tokenDesafio = null;
+
+  formLogin.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+
+    if (!formLogin.checkValidity()) {
+      formLogin.reportValidity();
+      return;
+    }
+
+    btnLogin.disabled = true;
+    feedback.hidden = true;
+
+    try {
+      const email = formLogin.elements["email"].value.trim();
+      const senha = formLogin.elements["senha"].value;
+      const resposta = await iniciarLogin(email, senha);
       tokenDesafio = resposta.token_desafio;
+
       formLogin.hidden = true;
       form2fa.hidden = false;
-      mostrarMensagem(
-        resposta.detalhe || "Codigo de verificacao enviado por SMS.",
-        "sucesso"
+      mostrarFeedback(
+        feedback,
+        resposta.detalhe || "Código de verificação enviado por SMS.",
+        "ok"
       );
+      form2fa.elements["codigo"].focus();
     } catch (erro) {
-      mostrarMensagem(erro.message, "erro");
+      mostrarFeedback(
+        feedback,
+        erro.message || "Não foi possível entrar. Verifique seus dados.",
+        "erro"
+      );
+    } finally {
+      btnLogin.disabled = false;
     }
   });
 
-  form2fa.addEventListener("submit", async function (evento) {
+  form2fa.addEventListener("submit", async (evento) => {
     evento.preventDefault();
-    const codigo = document.getElementById("login-codigo").value.trim();
 
-    if (!tokenDesafio) {
-      mostrarMensagem(
-        "Sessao de login expirada. Refaca a etapa 1.",
-        "erro"
-      );
+    if (!form2fa.checkValidity()) {
+      form2fa.reportValidity();
       return;
     }
 
+    btn2fa.disabled = true;
+    feedback.hidden = true;
+
     try {
-      const resposta = await apiFetch("/auth/2fa/verificar", {
-        method: "POST",
-        body: JSON.stringify({ token_desafio: tokenDesafio, codigo }),
-      });
-      // Etapa 2 concluida: persiste o token para o apiFetch reutilizar.
+      const codigo = form2fa.elements["codigo"].value.trim();
+      const resposta = await verificar2fa(tokenDesafio, codigo);
       localStorage.setItem("access_token", resposta.access_token);
-      if (resposta.papel) {
-        localStorage.setItem("papel", resposta.papel);
+      if (resposta.papel) localStorage.setItem("papel", resposta.papel);
+      // id do turista logado, usado como fk_conta_turista ao registrar a venda.
+      if (resposta.id_passageiro != null) {
+        localStorage.setItem("id_turista", String(resposta.id_passageiro));
       }
-      mostrarMensagem(
-        `Login realizado com sucesso. Logado como ${resposta.papel}.`,
-        "sucesso"
-      );
-      // Redireciona para a home apos um curto intervalo.
-      setTimeout(function () {
+
+      mostrarFeedback(feedback, "Login concluído! Redirecionando...", "ok");
+      setTimeout(() => {
         window.location.href = "../index.html";
       }, 1200);
     } catch (erro) {
-      mostrarMensagem(erro.message, "erro");
+      mostrarFeedback(
+        feedback,
+        erro.message || "Código inválido. Tente novamente.",
+        "erro"
+      );
+      btn2fa.disabled = false;
     }
   });
-})();
+
+  voltar.addEventListener("click", (evento) => {
+    evento.preventDefault();
+    tokenDesafio = null;
+    form2fa.hidden = true;
+    form2fa.reset();
+    formLogin.hidden = false;
+    feedback.hidden = true;
+    formLogin.elements["email"].focus();
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  inicializarCadastro();
+  inicializarLogin();
+});

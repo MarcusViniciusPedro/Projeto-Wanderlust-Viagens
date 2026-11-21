@@ -3,131 +3,178 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title>Wanderlust Viagens</title>
-    <link rel="icon" type="image/png" href="imgs/icon.png">
-
+    <link rel="icon" type="image/svg+xml" href="imgs/icon.svg">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
 
     <header>
-        <nav class="navbar navbar-expand-md navbar-dark bg-light fixed-top">
-            <a href="index.html" class="navbar-brand">
-                  <h1 class="display-5 text-secondary m-0">
-                    <img src="imgs/icon.png" class="img-fluid logo-icon" alt="Wonderlust Viagens - Icon">   Wonderlust</h1>
-                  </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
-                <span class="fa fa-bars"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarCollapse">
-                <div class="navbar-nav ms-auto py-0">
-                    <a href="index.html" class="nav-item nav-link active">Página Inicial</a>
-                    <a href="pages/pacotes.html" class="nav-item nav-link">Pacotes</a>
-                    <a href="pages/login.html" class="nav-item nav-link">Login</a>
-                    <a href="pages/cadastro.html" class="nav-item nav-link">Cadastre-se</a>
-                    <a href="pages/carrinho.html" class="nav-item nav-link">Carrinho</a>
+        <nav class="menu navbar navbar-expand-md" aria-label="Menu principal" data-bs-theme="dark">
+            <div class="container-fluid">
+                <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+                    <img src="imgs/icon.svg" alt="" class="logo-icon">
+                    <span>Wanderlust Viagens</span>
+                </a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu-nav"
+                    aria-controls="menu-nav" aria-expanded="false" aria-label="Abrir menu">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="menu-nav">
+                    <ul class="menu-lista navbar-nav ms-auto">
+                        <li class="nav-item"><a class="nav-link active" aria-current="page" href="index.html">Home</a>
+                        </li>
+                        <li class="nav-item"><a class="nav-link" href="pages/pacotes.html">Pacotes</a></li>
+                        <li class="nav-item"><a class="nav-link" href="pages/login.html">Login</a></li>
+                        <li class="nav-item"><a class="nav-link" href="pages/cadastro.html">Cadastre-se</a></li>
+                        <li class="nav-item"><a class="nav-link" href="pages/carrinho.html">Carrinho</a></li>
+                    </ul>
                 </div>
-                <button class="btn btn-primary btn-md-square border-secondary mb-3 mb-md-3 mb-lg-0 me-3"
-                    data-bs-toggle="modal" data-bs-target="#searchModal"><i class="fas fa-search"></i></button>
-                <a href=""
-                    class="btn btn-primary border-secondary rounded-pill py-2 px-4 px-lg-3 mb-3 mb-md-3 mb-lg-0">Cadastre-se</a>
             </div>
         </nav>
-
-        <div class="container-fluid nav-bar p-0">
-            <nav class="menu navbar navbar-expand-lg" aria-label="Menu principal"
-            data-bs-theme="dark">
-            <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#menu-nav"
-                aria-controls="menu-nav" aria-expanded="false" aria-label="Abrir menu">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="collapse navbar-collapse" id="menu-nav">
-                <ul class="menu-lista navbar-nav">
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="pages/pacotes.html">Pacotes</a></li>
-                    <li><a href="pages/login.html">login</a></li>
-                    <li><a href="pages/cadastro.html">Cadastre-se</a></li>
-                    <li><a href="pages/carrinho.html">Carrinho</a></li>
-                </ul>
-            </div>
-            </nav>
-        </div>
     </header>
 
     <main>
-        <h2>DESCUBRA A SUA PRÓXIMA VIAGEM!</h2>
 
-        <!-- Indicador de status da API (usa o endpoint GET /health, sem banco) -->
-        <p id="api-status" class="api-status" aria-live="polite">Verificando API...</p>
+        <!-- Carrossel de topo: fotos dos destinos (Copan/SP, Boituva, Awasi/SC),
+                 definidas em .hero-slide-1/2/3 no CSS, com texto por cima. -->
+        <section aria-label="Destaques">
+            <div id="carrossel-topo" class="carousel slide hero-carrossel" data-bs-ride="carousel">
+                <div class="carousel-indicators">
+                    <button type="button" data-bs-target="#carrossel-topo" data-bs-slide-to="0" class="active"
+                        aria-current="true" aria-label="Slide 1"></button>
+                    <button type="button" data-bs-target="#carrossel-topo" data-bs-slide-to="1"
+                        aria-label="Slide 2"></button>
+                    <button type="button" data-bs-target="#carrossel-topo" data-bs-slide-to="2"
+                        aria-label="Slide 3"></button>
+                </div>
+
+                <div class="carousel-inner">
+                    <div class="carousel-item active">
+                        <div class="hero-slide hero-slide-1">
+                            <div class="hero-conteudo">
+                                <h1 class="hero-titulo">Wanderlust Viagens</h1>
+                                <p class="hero-subtitulo">Vontade forte de viajar.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="carousel-item">
+                        <div class="hero-slide hero-slide-2">
+                            <div class="hero-conteudo">
+                                <h1 class="hero-titulo">Arrisque-se</h1>
+                                <p class="hero-subtitulo">Com os nossos passeios, você vive experiências inesquecíveis.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="carousel-item">
+                        <div class="hero-slide hero-slide-3">
+                            <div class="hero-conteudo">
+                                <h1 class="hero-titulo">Escolha o melhor para você</h1>
+                                <p class="hero-subtitulo">Do econômico ao luxo, temos todas as opções.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="carousel-control-prev" type="button" data-bs-target="#carrossel-topo"
+                    data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Anterior</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#carrossel-topo"
+                    data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Próximo</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Recomendação (RF7) -->
+        <section class="recomendacao" aria-labelledby="recomendacao-titulo">
+            <div class="recomendacao-mascote" aria-hidden="true">
+                <img src="imgs/aiv_mascote2.svg" alt="Imagem do mascote AIV" class="recomendacao-mascote-img">
+            </div>
+
+            <div class="recomendacao-form">
+                <h2 id="recomendacao-titulo">Olá!<br>
+                    Eu sou o AIV e vou te ajudar na sua escolha.</h2>
+                <p>Me conte as suas preferẽncias.</p>
+
+                <form id="form-recomendacao" novalidate>
+                    <div class="mb-3">
+                        <label for="rec-tipo" class="form-label">Tipo de viagem</label>
+                        <select id="rec-tipo" name="tipo_viagem" class="form-select">
+                            <option value="" selected>Sem preferência</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="rec-nivel" class="form-label">Nível de conforto</label>
+                        <select id="rec-nivel" name="nivel" class="form-select">
+                            <option value="" selected>Sem preferência</option>
+                            <option value="economico">Econômico</option>
+                            <option value="conforto">Conforto</option>
+                            <option value="luxo">Luxo</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="rec-orcamento" class="form-label">Orçamento máximo (R$)</label>
+                        <input type="number" id="rec-orcamento" name="orcamento_max" class="form-control" min="0"
+                            step="100" placeholder="Opcional">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100" id="btn-recomendar">
+                        Recomendar pacotes
+                    </button>
+                </form>
+
+                <div id="recomendacao-feedback" class="cadastro-feedback" role="alert" aria-live="polite" hidden></div>
+                <ol id="recomendacao-lista" class="recomendacao-lista" hidden></ol>
+            </div>
+        </section>
 
     </main>
 
-    <footer>
-
-    </footer>
-
-    <footer>
-
+    <footer class="rodape">
         <h2>ENTRE EM CONTATO</h2>
 
-        <section aria-label="Informações de contato">
-
+        <section aria-label="Informações de contato" class="rodape-contatos">
             <section class="contato-item">
                 <h3>LOCALIZAÇÃO</h3>
                 <p>São Paulo - SP</p>
             </section>
 
-            <section>
+            <section class="contato-item">
                 <h3>TELEFONE</h3>
-                <p>
-                    <a href="tel:+5511912345678">(11) 9 1234-5678</a>
-                </p>
+                <p><a href="tel:+5511912345678">(11) 9 1234-5678</a></p>
             </section>
 
             <section class="contato-item">
                 <h3>E-MAIL</h3>
-                <p>
-                    <a href="mailto:sac@sampatour.com.br">
-                        sac@wanderlustviagens.com.br
-                    </a>
-                </p>
+                <p><a href="mailto:sac@wanderlustviagens.com.br">sac@wanderlustviagens.com.br</a></p>
             </section>
 
-            <section>
+            <section class="contato-item">
                 <h3>REDES SOCIAIS</h3>
                 <p>@wanderlustviagens</p>
             </section>
-
         </section>
-
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/api.js"></script>
-    <script>
-        // Demonstracao front<->back sem banco: consulta GET /health e exibe o status.
-        (function () {
-            "use strict";
-            var alvo = document.getElementById("api-status");
-            if (!alvo) {
-                return;
-            }
-            apiFetch("/health")
-                .then(function (dados) {
-                    alvo.textContent = "API online";
-                    alvo.classList.add("api-status-online");
-                })
-                .catch(function () {
-                    alvo.textContent = "API offline";
-                    alvo.classList.add("api-status-offline");
-                });
-        })();
-    </script>
-
+    <script src="js/home.js"></script>
+    <script src="js/admin-link.js"></script>
 </body>
+
+</html>
