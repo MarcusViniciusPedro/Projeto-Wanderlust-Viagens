@@ -6,7 +6,7 @@ matriz e uma estrutura de dados pura e testavel, independente de HTTP ou banco.
 Mapeamento da secao 4.1:
   - Turista: cadastrar-se, consultar pacotes, reservar, comprar.
   - Agente de Viagens: reservar, emitir passagem.
-  - Administrador: gerenciar catalogo, agendar, gerenciar contas.
+  - Administrador: gerenciar catalogo, gerenciar contas.
 """
 
 from __future__ import annotations
@@ -33,7 +33,6 @@ class Permissao(str, Enum):
     COMPRAR = "comprar"
     EMITIR_PASSAGEM = "emitir_passagem"
     GERENCIAR_CATALOGO = "gerenciar_catalogo"
-    AGENDAR = "agendar"
     GERENCIAR_CONTAS = "gerenciar_contas"
 
 
@@ -57,7 +56,6 @@ MATRIZ_PERMISSOES: Dict[Papel, FrozenSet[Permissao]] = {
     Papel.ADMINISTRADOR: frozenset(
         {
             Permissao.GERENCIAR_CATALOGO,
-            Permissao.AGENDAR,
             Permissao.GERENCIAR_CONTAS,
         }
     ),

@@ -58,14 +58,8 @@ class Settings(BaseSettings):
     # --- Integracoes externas (stubs; vazio = desativado) -----------------
     sms_api_key: Optional[str] = None
     sms_sender: Optional[str] = None
-    email_api_key: Optional[str] = None
-    email_from: Optional[str] = None
     payment_api_key: Optional[str] = None
     payment_base_url: Optional[str] = None
-    streetview_api_key: Optional[str] = None
-    # URL base da visualizacao 3D/Street View (RF9). Configuravel para nao
-    # depender de um provedor real por padrao; usada para montar o embed.
-    streetview_base_url: str = "https://www.google.com/maps/embed/v1/streetview"
 
     # --- Flag de robustez para testes -------------------------------------
     db_configured_flag: bool = Field(default=False, exclude=True)

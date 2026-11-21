@@ -41,19 +41,6 @@ class CriarVendaRequest(BaseModel):
     fk_conta_colaborador: Optional[int] = None
 
 
-class CriarCompraClienteRequest(BaseModel):
-    """Dados para o PROPRIO turista criar uma compra (self-service, FEAT-003).
-
-    De proposito NAO inclui ``fk_conta_turista``: o dono da compra e sempre o
-    id_passageiro do JWT, impedindo que um cliente crie uma venda em nome de
-    outro. Tambem nao expoe ``fk_conta_colaborador`` (compra direta do cliente).
-    """
-
-    fk_pacote: int
-    valor_total: float = Field(gt=0)
-    forma_pagamento: FormaPagamento
-
-
 class VendaSaida(BaseModel):
     """Representacao de uma venda e seu estado de pagamento."""
 

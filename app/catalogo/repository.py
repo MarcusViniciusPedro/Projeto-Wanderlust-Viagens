@@ -17,12 +17,9 @@ from app.catalogo.schemas import (
     HospedagemSaida,
     PacoteCriar,
     PacoteSaida,
-    ViagemCriar,
-    ViagemSaida,
 )
 from app.core.config import Settings
 from app.db.session import get_connection
-from app.integracoes.streetview import Destino
 
 
 def listar_pacotes(settings: Optional[Settings] = None) -> List[PacoteSaida]:
@@ -53,35 +50,6 @@ def listar_pacotes(settings: Optional[Settings] = None) -> List[PacoteSaida]:
         )
         for linha in linhas
     ]
-
-
-def buscar_destino(
-    id_destino: int, settings: Optional[Settings] = None
-) -> Optional[Destino]:
-    """Carrega um destino pelo id (para a visualizacao 3D/Street View, RF9)."""
-    conn = get_connection(settings)
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id_destino, cidade, estado, pais
-            FROM dbo.Destino
-            WHERE id_destino = %s
-            """,
-            (id_destino,),
-        )
-        linha = cursor.fetchone()
-    finally:
-        conn.close()
-
-    if linha is None:
-        return None
-    return Destino(
-        id_destino=linha[0],
-        cidade=linha[1],
-        estado=linha[2],
-        pais=linha[3],
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -404,96 +372,6 @@ def excluir_destino(id_destino: int, settings: Optional[Settings] = None) -> boo
         cursor.execute(
             "DELETE FROM dbo.Destino WHERE id_destino = %s",
             (id_destino,),
-        )
-        afetadas = cursor.rowcount
-        conn.commit()
-    finally:
-        conn.close()
-
-    return afetadas > 0
-
-
-# ---------------------------------------------------------------------------
-# Agendar Viagem (admin, secao 4.1): CRUD de Viagem (dbo.Viagem).
-# ---------------------------------------------------------------------------
-
-
-def criar_viagem(
-    dados: ViagemCriar, settings: Optional[Settings] = None
-) -> ViagemSaida:
-    """Agenda uma viagem vinculada a um destino e retorna o id gerado."""
-    conn = get_connection(settings)
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO dbo.Viagem
-                (data_partida, data_chegada, meio_transporte, duracao,
-                 fk_Destino_id_destino)
-            OUTPUT INSERTED.id_viagem
-            VALUES (%s, %s, %s, %s, %s)
-            """,
-            (
-                dados.data_partida,
-                dados.data_chegada,
-                dados.meio_transporte,
-                dados.duracao,
-                dados.fk_Destino_id_destino,
-            ),
-        )
-        id_viagem = cursor.fetchone()[0]
-        conn.commit()
-    finally:
-        conn.close()
-
-    return ViagemSaida(
-        id_viagem=id_viagem,
-        data_partida=dados.data_partida,
-        data_chegada=dados.data_chegada,
-        meio_transporte=dados.meio_transporte,
-        duracao=dados.duracao,
-        fk_Destino_id_destino=dados.fk_Destino_id_destino,
-    )
-
-
-def listar_viagens(settings: Optional[Settings] = None) -> List[ViagemSaida]:
-    """Lista todas as viagens agendadas (Agendar Viagem, secao 4.1)."""
-    conn = get_connection(settings)
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id_viagem, data_partida, data_chegada, meio_transporte,
-                   duracao, fk_Destino_id_destino
-            FROM dbo.Viagem
-            ORDER BY data_partida
-            """
-        )
-        linhas = cursor.fetchall()
-    finally:
-        conn.close()
-
-    return [
-        ViagemSaida(
-            id_viagem=linha[0],
-            data_partida=linha[1],
-            data_chegada=linha[2],
-            meio_transporte=linha[3],
-            duracao=linha[4],
-            fk_Destino_id_destino=linha[5],
-        )
-        for linha in linhas
-    ]
-
-
-def excluir_viagem(id_viagem: int, settings: Optional[Settings] = None) -> bool:
-    """Remove uma viagem pelo id. Retorna True se alguma linha foi removida."""
-    conn = get_connection(settings)
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "DELETE FROM dbo.Viagem WHERE id_viagem = %s",
-            (id_viagem,),
         )
         afetadas = cursor.rowcount
         conn.commit()

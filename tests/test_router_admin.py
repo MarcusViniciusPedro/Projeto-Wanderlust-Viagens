@@ -1,8 +1,8 @@
 """Testes de router do CRUD do Administrador (secao 4.1) com TestClient.
 
-Cobrem as tres capacidades do admin, todas protegidas pela camada de authz
-(FEAT-001): Gerenciar Catalogo (Pacote/Destino), Agendar Viagem (Viagem) e
-Gerenciar Contas (listar/alterar-status/excluir). Sem SQL Server vivo: os
+Cobrem as capacidades do admin, todas protegidas pela camada de authz
+(FEAT-001): Gerenciar Catalogo (Pacote/Destino) e Gerenciar Contas
+(listar/alterar-status/excluir). Sem SQL Server vivo: os
 repositories de catalogo e usuarios sao substituidos por fakes em memoria via
 monkeypatch (padrao de tests/test_router_vendas.py) e os JWTs sao emitidos com
 ``criar_token_acesso`` + WANDERLUST_JWT_SECRET por env (padrao de
@@ -31,7 +31,6 @@ from app.core.security import criar_token_acesso
 from app.catalogo.schemas import (
     DestinoSaida,
     PacoteSaida,
-    ViagemSaida,
 )
 from app.db.session import DatabaseNotConfiguredError
 from app.usuarios.schemas import ContaAdminSaida, StatusConta
@@ -46,10 +45,8 @@ from app.usuarios.schemas import ContaAdminSaida, StatusConta
 class FakeCatalogoRepo:
     pacotes: Dict[int, PacoteSaida] = field(default_factory=dict)
     destinos: Dict[int, DestinoSaida] = field(default_factory=dict)
-    viagens: Dict[int, ViagemSaida] = field(default_factory=dict)
     proximo_pacote: int = 1
     proximo_destino: int = 1
-    proximo_viagem: int = 1
 
     def criar_pacote(self, dados, settings=None):
         id_pacote = self.proximo_pacote
@@ -87,19 +84,6 @@ class FakeCatalogoRepo:
 
     def excluir_destino(self, id_destino, settings=None):
         return self.destinos.pop(id_destino, None) is not None
-
-    def criar_viagem(self, dados, settings=None):
-        id_viagem = self.proximo_viagem
-        self.proximo_viagem += 1
-        viagem = ViagemSaida(id_viagem=id_viagem, **dados.model_dump())
-        self.viagens[id_viagem] = viagem
-        return viagem
-
-    def listar_viagens(self, settings=None):
-        return list(self.viagens.values())
-
-    def excluir_viagem(self, id_viagem, settings=None):
-        return self.viagens.pop(id_viagem, None) is not None
 
 
 @dataclass
@@ -172,9 +156,6 @@ def fake_catalogo(monkeypatch: pytest.MonkeyPatch) -> FakeCatalogoRepo:
         "buscar_destino_completo",
         "atualizar_destino",
         "excluir_destino",
-        "criar_viagem",
-        "listar_viagens",
-        "excluir_viagem",
     ):
         monkeypatch.setattr(repository, nome, getattr(repo, nome))
     return repo
@@ -229,13 +210,6 @@ _DESTINO_PAYLOAD = {
     "pais": "Brasil",
     "categoria": "Praia",
     "descricao": "Praias famosas.",
-}
-_VIAGEM_PAYLOAD = {
-    "data_partida": "2025-12-20T08:00:00",
-    "data_chegada": "2025-12-20T10:00:00",
-    "meio_transporte": "Aviao",
-    "duracao": "2h",
-    "fk_Destino_id_destino": 1,
 }
 
 
@@ -297,46 +271,6 @@ def test_catalogo_sem_banco_503(client: TestClient, monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(repository, "criar_pacote", _sem_banco)
     resp = client.post("/catalogo/pacotes", json=_PACOTE_PAYLOAD, headers=_admin())
     assert resp.status_code == 503
-
-
-# --------------------------------------------------------------------------
-# Agendar Viagem (Viagem) - permissao agendar.
-# --------------------------------------------------------------------------
-
-
-def test_admin_agenda_lista_exclui_viagem(
-    client: TestClient, fake_catalogo: FakeCatalogoRepo
-):
-    resp = client.post("/catalogo/viagens", json=_VIAGEM_PAYLOAD, headers=_admin())
-    assert resp.status_code == 201
-    assert resp.json()["id_viagem"] == 1
-    assert fake_catalogo.viagens[1].meio_transporte == "Aviao"
-
-    lista = client.get("/catalogo/viagens", headers=_admin())
-    assert lista.status_code == 200
-    assert len(lista.json()) == 1
-
-    resp_del = client.delete("/catalogo/viagens/1", headers=_admin())
-    assert resp_del.status_code == 204
-    assert 1 not in fake_catalogo.viagens
-
-
-def test_viagem_data_invalida_422(client: TestClient, fake_catalogo: FakeCatalogoRepo):
-    payload = {**_VIAGEM_PAYLOAD, "data_chegada": "2025-12-20T06:00:00"}
-    resp = client.post("/catalogo/viagens", json=payload, headers=_admin())
-    assert resp.status_code == 422
-
-
-def test_viagem_turista_403(client: TestClient, fake_catalogo: FakeCatalogoRepo):
-    resp = client.post(
-        "/catalogo/viagens", json=_VIAGEM_PAYLOAD, headers=_auth(Papel.TURISTA)
-    )
-    assert resp.status_code == 403
-
-
-def test_viagem_sem_token_401(client: TestClient, fake_catalogo: FakeCatalogoRepo):
-    resp = client.post("/catalogo/viagens", json=_VIAGEM_PAYLOAD)
-    assert resp.status_code == 401
 
 
 # --------------------------------------------------------------------------
@@ -429,8 +363,6 @@ def test_novas_rotas_no_openapi(client: TestClient):
     assert "put" in paths["/catalogo/pacotes/{id_pacote}"]
     assert "delete" in paths["/catalogo/pacotes/{id_pacote}"]
     assert "post" in paths["/catalogo/destinos"]
-    assert "post" in paths["/catalogo/viagens"]
-    assert "get" in paths["/catalogo/viagens"]
     assert "get" in paths["/auth/admin/contas"]
     assert "patch" in paths["/auth/admin/contas/{id_passageiro}/status"]
     assert "delete" in paths["/auth/admin/contas/{id_passageiro}"]

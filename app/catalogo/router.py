@@ -1,11 +1,10 @@
-"""Rotas HTTP do catalogo: busca de pacotes (RF3) e visualizacao 3D (RF9).
+"""Rotas HTTP do catalogo: busca de pacotes (RF3) e CRUD do admin (secao 4.1).
 
 Endpoints:
   GET /catalogo/pacotes            - busca de pacotes com filtros (RF3)
-  GET /catalogo/destinos/{id}/streetview - URL/embed de Street View (RF9)
 
-A logica de filtragem e de montagem de URL vive em funcoes puras testaveis.
-Sem banco configurado, ``DatabaseNotConfiguredError`` vira HTTP 503.
+A logica de filtragem vive em funcoes puras testaveis. Sem banco configurado,
+``DatabaseNotConfiguredError`` vira HTTP 503.
 """
 
 from __future__ import annotations
@@ -29,18 +28,11 @@ from app.catalogo.schemas import (
     PacoteCriar,
     PacoteSaida,
     ResultadoBusca,
-    StreetViewSaida,
-    ViagemCriar,
-    ViagemSaida,
 )
 from app.catalogo.service import filtrar_pacotes
 from app.core.authz import Permissao
 from app.core.deps import requer_permissao
 from app.db.session import DatabaseNotConfiguredError
-from app.integracoes.streetview import (
-    montar_embed_html,
-    montar_url_streetview,
-)
 
 router = APIRouter(prefix="/catalogo", tags=["catalogo"])
 
@@ -113,7 +105,7 @@ def obter_pacote(id_pacote: int) -> PacoteSaida:
 
 @router.get("/destinos", response_model=List[DestinoSaida])
 def listar_destinos() -> List[DestinoSaida]:
-    """Lista os destinos do catalogo (leitura publica, RF3/RF9).
+    """Lista os destinos do catalogo (leitura publica, RF3).
 
     Fecha o R do CRUD de Destino: a leitura por id completa (ja existente,
     gated) e a listagem publica aqui compoem o read simetrico. Mantem a
@@ -123,29 +115,6 @@ def listar_destinos() -> List[DestinoSaida]:
         return repository.listar_destinos()
     except DatabaseNotConfiguredError as exc:
         raise _erro_db_indisponivel() from exc
-
-
-@router.get("/destinos/{id_destino}/streetview", response_model=StreetViewSaida)
-def streetview_destino(id_destino: int) -> StreetViewSaida:
-    """Retorna a URL/embed de Street View (visualizacao 3D) de um destino (RF9)."""
-    try:
-        destino = repository.buscar_destino(id_destino)
-    except DatabaseNotConfiguredError as exc:
-        raise _erro_db_indisponivel() from exc
-
-    if destino is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Destino nao encontrado."
-        )
-
-    url = montar_url_streetview(destino)
-    local = ", ".join(p for p in (destino.cidade, destino.estado, destino.pais) if p)
-    return StreetViewSaida(
-        id_destino=destino.id_destino,
-        local=local,
-        url=url,
-        embed_html=montar_embed_html(url, local),
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -287,57 +256,6 @@ def excluir_destino(id_destino: int) -> None:
     if not removido:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Destino nao encontrado."
-        )
-
-
-# ---------------------------------------------------------------------------
-# Agendar Viagem (Administrador, secao 4.1): criar/listar/excluir Viagem.
-# Exige a permissao AGENDAR.
-# ---------------------------------------------------------------------------
-
-
-@router.post(
-    "/viagens",
-    response_model=ViagemSaida,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(requer_permissao(Permissao.AGENDAR))],
-)
-def agendar_viagem(dados: ViagemCriar) -> ViagemSaida:
-    """Agenda uma viagem vinculada a um destino (Agendar Viagem, secao 4.1)."""
-    try:
-        return repository.criar_viagem(dados)
-    except DatabaseNotConfiguredError as exc:
-        raise _erro_db_indisponivel() from exc
-
-
-@router.get(
-    "/viagens",
-    response_model=List[ViagemSaida],
-    dependencies=[Depends(requer_permissao(Permissao.AGENDAR))],
-)
-def listar_viagens() -> List[ViagemSaida]:
-    """Lista as viagens agendadas (Agendar Viagem, secao 4.1)."""
-    try:
-        return repository.listar_viagens()
-    except DatabaseNotConfiguredError as exc:
-        raise _erro_db_indisponivel() from exc
-
-
-@router.delete(
-    "/viagens/{id_viagem}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(requer_permissao(Permissao.AGENDAR))],
-)
-def excluir_viagem(id_viagem: int) -> None:
-    """Remove uma viagem agendada (Agendar Viagem, secao 4.1)."""
-    try:
-        removido = repository.excluir_viagem(id_viagem)
-    except DatabaseNotConfiguredError as exc:
-        raise _erro_db_indisponivel() from exc
-
-    if not removido:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Viagem nao encontrada."
         )
 
 

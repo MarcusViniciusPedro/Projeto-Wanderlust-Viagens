@@ -39,10 +39,9 @@ def test_agente_nao_pode_gerenciar_contas() -> None:
     assert tem_permissao(Papel.AGENTE, Permissao.GERENCIAR_CONTAS) is False
 
 
-def test_administrador_pode_gerenciar_catalogo_agendar_contas() -> None:
+def test_administrador_pode_gerenciar_catalogo_e_contas() -> None:
     for perm in (
         Permissao.GERENCIAR_CATALOGO,
-        Permissao.AGENDAR,
         Permissao.GERENCIAR_CONTAS,
     ):
         assert tem_permissao(Papel.ADMINISTRADOR, perm) is True

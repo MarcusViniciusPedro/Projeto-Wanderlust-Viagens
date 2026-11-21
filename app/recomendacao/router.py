@@ -6,9 +6,6 @@ Endpoints sem banco (operam sobre o corpo da requisicao):
   POST /recomendacao/feedback    - agrega avaliacoes de um pacote (RF8)
 
 Endpoints DB-backed (coletam/persistem dados que o AIV usa para personalizar):
-  GET  /recomendacao/para-mim                    - ranking personalizado do turista
-  GET  /recomendacao/preferencias/me             - le a propria Preferencia
-  PUT  /recomendacao/preferencias/me             - grava a propria Preferencia
   POST /recomendacao/avaliacoes                  - envia a propria Avaliacao
   GET  /recomendacao/pacotes/{fk_pacote}/feedback - agrega avaliacoes persistidas
 
@@ -206,127 +203,6 @@ def feedback(dados: FeedbackRequest) -> FeedbackResposta:
         score_agregado=resultado.score_agregado,
         total_avaliacoes=resultado.total_avaliacoes,
         resumo=resultado.resumo,
-    )
-
-
-# ---------------------------------------------------------------------------
-# AIV DB-backed: recomendacao personalizada para o turista logado (RF7).
-# Coleta os pacotes do catalogo (com a reputacao de IA_Feedback) e a
-# Preferencia salva do turista e reutiliza o service puro ``recomendar``.
-# ---------------------------------------------------------------------------
-
-
-@router.get("/para-mim", response_model=List[ItemRankingResposta])
-def recomendar_para_mim(
-    limite: Optional[int] = None,
-    usuario_atual: UsuarioAtual = Depends(requer_autenticacao),
-) -> List[ItemRankingResposta]:
-    """Ranking personalizado para o PROPRIO turista logado (RF7, DB-backed).
-
-    Coleta os pacotes do catalogo (com a reputacao de IA_Feedback) e a
-    Preferencia salva do turista do JWT, e delega ao service puro
-    ``recomendar`` (sem duplicar a heuristica). Turista sem Preferencia salva
-    ainda recebe um ranking: usa-se uma Preferencia vazia, de modo que o score
-    passa a depender so da reputacao/orcamento neutro.
-    """
-    fk_turista = _id_do_token(usuario_atual)
-    try:
-        preferencia = repository.buscar_preferencia_turista(fk_turista)
-        pacotes = repository.listar_pacotes_para_recomendacao()
-    except DatabaseNotConfiguredError as exc:
-        raise _erro_db_indisponivel() from exc
-
-    if preferencia is None:
-        preferencia = Preferencia()
-
-    itens = recomendar(pacotes, preferencia, limite=limite)
-    return [
-        ItemRankingResposta(
-            id_pacote=it.id_pacote,
-            score=it.score,
-            dentro_do_orcamento=it.dentro_do_orcamento,
-        )
-        for it in itens
-    ]
-
-
-# ---------------------------------------------------------------------------
-# Preferencia self-service: o turista le/grava a PROPRIA Preferencia.
-# fk_turista vem SEMPRE do JWT (nunca do corpo). Como fk_turista e UNIQUE, a
-# escrita e um upsert (uma Preferencia por turista).
-# ---------------------------------------------------------------------------
-
-
-class PreferenciaUpsert(BaseModel):
-    """Entrada da gravacao da propria Preferencia (nao expoe fk_turista)."""
-
-    tipo_viagem: Optional[str] = None
-    nivel: Optional[str] = None
-    orcamento_max: Optional[float] = Field(default=None, ge=0)
-    estacao_preferida: Optional[str] = None
-    observacoes: Optional[str] = None
-
-
-class PreferenciaSaida(BaseModel):
-    """Resposta com a Preferencia do turista."""
-
-    tipo_viagem: Optional[str] = None
-    nivel: Optional[str] = None
-    orcamento_max: Optional[float] = None
-    estacao_preferida: Optional[str] = None
-
-
-@router.get("/preferencias/me", response_model=PreferenciaSaida)
-def ler_preferencia(
-    usuario_atual: UsuarioAtual = Depends(requer_autenticacao),
-) -> PreferenciaSaida:
-    """Le a PROPRIA Preferencia do turista logado (self-service).
-
-    404 quando o turista ainda nao salvou nenhuma Preferencia.
-    """
-    fk_turista = _id_do_token(usuario_atual)
-    try:
-        preferencia = repository.buscar_preferencia_turista(fk_turista)
-    except DatabaseNotConfiguredError as exc:
-        raise _erro_db_indisponivel() from exc
-
-    if preferencia is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Preferencia nao encontrada. Grave suas preferencias primeiro.",
-        )
-    return PreferenciaSaida(
-        tipo_viagem=preferencia.tipo_viagem,
-        nivel=preferencia.nivel,
-        orcamento_max=preferencia.orcamento_max,
-        estacao_preferida=preferencia.estacao_preferida,
-    )
-
-
-@router.put("/preferencias/me", response_model=PreferenciaSaida)
-def gravar_preferencia(
-    dados: PreferenciaUpsert,
-    usuario_atual: UsuarioAtual = Depends(requer_autenticacao),
-) -> PreferenciaSaida:
-    """Grava a PROPRIA Preferencia do turista logado (upsert, self-service)."""
-    fk_turista = _id_do_token(usuario_atual)
-    try:
-        preferencia = repository.upsert_preferencia(
-            fk_turista,
-            tipo_viagem=dados.tipo_viagem,
-            nivel=dados.nivel,
-            orcamento_max=dados.orcamento_max,
-            estacao_preferida=dados.estacao_preferida,
-            observacoes=dados.observacoes,
-        )
-    except DatabaseNotConfiguredError as exc:
-        raise _erro_db_indisponivel() from exc
-
-    return PreferenciaSaida(
-        tipo_viagem=preferencia.tipo_viagem,
-        nivel=preferencia.nivel,
-        orcamento_max=preferencia.orcamento_max,
-        estacao_preferida=preferencia.estacao_preferida,
     )
 
 

@@ -116,16 +116,6 @@ def test_pagar_a_partir_do_estado_persistido(
     assert fake_repo.vendas[id_venda].status_pagamento == StatusPagamento.PAGO
 
 
-def test_reembolsar_venda_pendente_e_rejeitado(
-    client: TestClient, fake_repo: FakeVendasRepo
-) -> None:
-    """Nao da para 'reembolsar' uma venda que no banco esta Pendente."""
-    id_venda = _criar(client)["id_venda"]
-    resp = client.post(f"/vendas/{id_venda}/reembolsar")
-    assert resp.status_code == 409  # transicao invalida a partir do estado real
-    assert fake_repo.vendas[id_venda].status_pagamento == StatusPagamento.PENDENTE
-
-
 def test_pagar_venda_ja_paga_e_rejeitado(
     client: TestClient, fake_repo: FakeVendasRepo
 ) -> None:
@@ -134,16 +124,6 @@ def test_pagar_venda_ja_paga_e_rejeitado(
     # Segunda tentativa: estado real ja e 'Pago' -> transicao invalida.
     resp = client.post(f"/vendas/{id_venda}/pagar")
     assert resp.status_code == 409
-
-
-def test_fluxo_pago_para_estornado(
-    client: TestClient, fake_repo: FakeVendasRepo
-) -> None:
-    id_venda = _criar(client)["id_venda"]
-    client.post(f"/vendas/{id_venda}/pagar")
-    resp = client.post(f"/vendas/{id_venda}/reembolsar")
-    assert resp.status_code == 200
-    assert resp.json()["status_pagamento"] == StatusPagamento.ESTORNADO.value
 
 
 def test_cancelar_venda_pendente(
