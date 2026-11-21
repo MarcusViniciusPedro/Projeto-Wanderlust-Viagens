@@ -15,6 +15,7 @@ function limparSessao() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("papel");
   localStorage.removeItem("id_turista");
+  sessionStorage.removeItem("pacote_reservado"); // esvazia o carrinho ao sair
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
