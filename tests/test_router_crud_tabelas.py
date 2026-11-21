@@ -3,9 +3,12 @@
 Cobrem duas frentes, ambas sem SQL Server vivo (repositories substituidos por
 fakes em memoria via monkeypatch + JWTs emitidos por WANDERLUST_JWT_SECRET):
 
-  1. CRUD HTTP de dbo.Hospedagem em app/catalogo, gated por gerenciar_catalogo:
-     admin cria/le/lista/atualiza/exclui; Turista -> 403; sem token -> 401;
-     sem banco -> 503; 404 para id inexistente; rotas no OpenAPI. Tambem as
+  1. CRUD HTTP de dbo.Hospedagem em app/catalogo: escrita gated por
+     gerenciar_catalogo e leitura publica. admin cria/le/lista/atualiza/exclui;
+     escrita por Turista -> 403; escrita sem token -> 401; leitura sem token ok;
+     sem banco -> 503; 404 para id inexistente; rotas no OpenAPI. As leituras
+     (GET lista e GET por id de hospedagem) sao PUBLICAS (FEAT-004): funcionam
+     sem token para o carrinho ler regime_alimentacao antes do login. Tambem as
      leituras adicionadas do catalogo (GET /catalogo/pacotes/{id} publico e
      GET /catalogo/destinos publico).
 
@@ -283,6 +286,87 @@ def test_hospedagem_sem_banco_503(
         "/catalogo/hospedagens", json=_HOSPEDAGEM_PAYLOAD, headers=_admin()
     )
     assert resp.status_code == 503
+
+
+# --------------------------------------------------------------------------
+# Hospedagem - leituras publicas (FEAT-004): o carrinho le o regime_alimentacao
+# por pacote antes da etapa de compra que exige login, entao GET lista e GET por
+# id devem funcionar SEM token (200/404), coerente com os demais GET de catalogo.
+# --------------------------------------------------------------------------
+
+
+def test_listar_hospedagens_publico(
+    client: TestClient, fake_catalogo: FakeCatalogoRepo
+):
+    # Semeia uma hospedagem (via repo fake) sem passar por rota autenticada.
+    from app.catalogo.schemas import HospedagemCriar
+
+    fake_catalogo.criar_hospedagem(HospedagemCriar(**_HOSPEDAGEM_PAYLOAD))
+
+    # Sem token: a lista deve responder 200 (nunca 401/403).
+    resp = client.get("/catalogo/hospedagens")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+    assert resp.json()[0]["regime_alimentacao"] == "Meia pensao"
+
+
+def test_listar_hospedagens_filtro_fk_pacote_publico(
+    client: TestClient, fake_catalogo: FakeCatalogoRepo
+):
+    from app.catalogo.schemas import HospedagemCriar
+
+    fake_catalogo.criar_hospedagem(HospedagemCriar(**_HOSPEDAGEM_PAYLOAD))
+
+    # Filtro por pacote funciona sem token (caso de uso real do carrinho).
+    resp_ok = client.get("/catalogo/hospedagens", params={"fk_pacote": 1})
+    assert resp_ok.status_code == 200
+    assert len(resp_ok.json()) == 1
+    resp_vazio = client.get("/catalogo/hospedagens", params={"fk_pacote": 99})
+    assert resp_vazio.status_code == 200
+    assert resp_vazio.json() == []
+
+
+def test_obter_hospedagem_por_id_publico(
+    client: TestClient, fake_catalogo: FakeCatalogoRepo
+):
+    from app.catalogo.schemas import HospedagemCriar
+
+    fake_catalogo.criar_hospedagem(HospedagemCriar(**_HOSPEDAGEM_PAYLOAD))
+
+    # Sem token: 200 para existente, 404 para inexistente (nunca 401/403).
+    resp = client.get("/catalogo/hospedagens/1")
+    assert resp.status_code == 200
+    assert resp.json()["nome"] == "Hotel Copacabana"
+    assert client.get("/catalogo/hospedagens/999").status_code == 404
+
+
+def test_hospedagem_escrita_sem_token_401(
+    client: TestClient, fake_catalogo: FakeCatalogoRepo
+):
+    # Escrita continua restrita: 401 sem token em POST/PUT/DELETE.
+    assert client.post(
+        "/catalogo/hospedagens", json=_HOSPEDAGEM_PAYLOAD
+    ).status_code == 401
+    assert client.put(
+        "/catalogo/hospedagens/1", json=_HOSPEDAGEM_PAYLOAD
+    ).status_code == 401
+    assert client.delete("/catalogo/hospedagens/1").status_code == 401
+
+
+def test_hospedagem_escrita_turista_403(
+    client: TestClient, fake_catalogo: FakeCatalogoRepo
+):
+    # Escrita continua restrita: 403 para Turista em POST/PUT/DELETE.
+    headers = _auth(Papel.TURISTA)
+    assert client.post(
+        "/catalogo/hospedagens", json=_HOSPEDAGEM_PAYLOAD, headers=headers
+    ).status_code == 403
+    assert client.put(
+        "/catalogo/hospedagens/1", json=_HOSPEDAGEM_PAYLOAD, headers=headers
+    ).status_code == 403
+    assert client.delete(
+        "/catalogo/hospedagens/1", headers=headers
+    ).status_code == 403
 
 
 # --------------------------------------------------------------------------

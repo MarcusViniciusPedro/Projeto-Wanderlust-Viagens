@@ -260,9 +260,16 @@ def excluir_destino(id_destino: int) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Gerenciar Catalogo (Administrador, secao 4.1): CRUD de Hospedagem.
-# Todas as rotas exigem a permissao GERENCIAR_CATALOGO (403 para quem nao tem;
-# 401 sem token). 404 para id inexistente; 503 sem banco.
+# Catalogo: Hospedagem.
+# Leitura (GET lista e GET por id) e PUBLICA, igual a GET /catalogo/pacotes e
+# GET /catalogo/destinos. Motivo: o carrinho (js/carrinho.js) le
+# GET /catalogo/hospedagens?fk_pacote=<id> no carregamento da pagina para obter
+# o regime_alimentacao e calcular o orcamento, e essa leitura acontece ANTES da
+# etapa de compra que exige login (btnRevisar). Exigir "qualquer usuario
+# autenticado" quebraria a previa de orcamento para o visitante ainda nao
+# logado; leitura publica e a opcao de menor privilegio que faz o carrinho
+# funcionar. Escrita (POST/PUT/DELETE) continua restrita a GERENCIAR_CATALOGO
+# (403 para quem nao tem; 401 sem token). 404 para id inexistente; 503 sem banco.
 # ---------------------------------------------------------------------------
 
 
@@ -283,12 +290,17 @@ def criar_hospedagem(dados: HospedagemCriar) -> HospedagemSaida:
 @router.get(
     "/hospedagens",
     response_model=List[HospedagemSaida],
-    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
 )
 def listar_hospedagens(
     fk_pacote: Optional[int] = Query(default=None),
 ) -> List[HospedagemSaida]:
-    """Lista hospedagens, opcionalmente filtrando por pacote (Gerenciar, 4.1)."""
+    """Lista hospedagens, opcionalmente filtrando por pacote.
+
+    Leitura publica (sem autenticacao), consistente com GET /catalogo/pacotes
+    e GET /catalogo/destinos: o carrinho le o regime_alimentacao por pacote
+    antes da etapa de compra que exige login, entao o visitante ainda nao
+    logado precisa conseguir ler. Escrita continua restrita a admin.
+    """
     try:
         return repository.listar_hospedagens(fk_pacote)
     except DatabaseNotConfiguredError as exc:
@@ -298,10 +310,13 @@ def listar_hospedagens(
 @router.get(
     "/hospedagens/{id_hospedagem}",
     response_model=HospedagemSaida,
-    dependencies=[Depends(requer_permissao(Permissao.GERENCIAR_CATALOGO))],
 )
 def obter_hospedagem(id_hospedagem: int) -> HospedagemSaida:
-    """Carrega uma hospedagem pelo id (Gerenciar Catalogo, secao 4.1)."""
+    """Carrega uma hospedagem pelo id.
+
+    Leitura publica (sem autenticacao), consistente com GET /catalogo/pacotes
+    e GET /catalogo/destinos; a escrita continua restrita a admin.
+    """
     try:
         hospedagem = repository.buscar_hospedagem(id_hospedagem)
     except DatabaseNotConfiguredError as exc:
