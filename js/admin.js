@@ -26,6 +26,15 @@ const criarPacote = (d) => apiFetch("/catalogo/pacotes", { method: "POST", body:
 const atualizarPacote = (id, d) => apiFetch(`/catalogo/pacotes/${id}`, { method: "PUT", body: JSON.stringify(d) });
 const excluirPacote = (id) => apiFetch(`/catalogo/pacotes/${id}`, { method: "DELETE" });
 
+const criarDestino = (d) => apiFetch("/catalogo/destinos", { method: "POST", body: JSON.stringify(d) });
+const atualizarDestino = (id, d) => apiFetch(`/catalogo/destinos/${id}`, { method: "PUT", body: JSON.stringify(d) });
+const excluirDestino = (id) => apiFetch(`/catalogo/destinos/${id}`, { method: "DELETE" });
+
+const listarHospedagens = () => apiFetch("/catalogo/hospedagens");
+const criarHospedagem = (d) => apiFetch("/catalogo/hospedagens", { method: "POST", body: JSON.stringify(d) });
+const atualizarHospedagem = (id, d) => apiFetch(`/catalogo/hospedagens/${id}`, { method: "PUT", body: JSON.stringify(d) });
+const excluirHospedagem = (id) => apiFetch(`/catalogo/hospedagens/${id}`, { method: "DELETE" });
+
 const listarContas = () => apiFetch("/auth/admin/contas");
 const alterarStatusConta = (id, novo_status, motivo) =>
   apiFetch(`/auth/admin/contas/${id}/status`, { method: "PATCH", body: JSON.stringify({ novo_status, motivo }) });
@@ -158,6 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       sairModoEdicao();
       carregarPacotes();
+      recarregarSelectPacotes(); // hospedagem reflete o novo pacote
     } catch (erro) {
       mostrar(pacoteFeedback, erro.message || "Não foi possível salvar o pacote.", "erro");
     } finally {
@@ -179,6 +189,7 @@ document.addEventListener("DOMContentLoaded", () => {
         await excluirPacote(id);
         mostrar(pacoteFeedback, `Pacote ${id} excluído.`, "ok");
         carregarPacotes();
+        recarregarSelectPacotes();
       } catch (erro) {
         mostrar(pacoteFeedback, erro.message || "Não foi possível excluir o pacote.", "erro");
       }
@@ -252,8 +263,263 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // ======================= DESTINOS =======================
+  const formDestino = document.getElementById("form-destino");
+  const destinoFeedback = document.getElementById("destino-feedback");
+  const tabelaDestinos = document.getElementById("tabela-destinos");
+  const btnSalvarDestino = document.getElementById("btn-salvar-destino");
+  const btnCancelarDestino = document.getElementById("btn-cancelar-destino");
+  const destinoId = document.getElementById("destino-id");
+
+  function sairEdicaoDestino() {
+    formDestino.reset();
+    destinoId.value = "";
+    btnSalvarDestino.textContent = "Adicionar destino";
+    btnCancelarDestino.hidden = true;
+  }
+
+  async function carregarDestinosTabela() {
+    try {
+      const destinos = await listarDestinos();
+      tabelaDestinos.innerHTML = destinos
+        .map(
+          (d) => `<tr>
+            <td>${d.id_destino}</td>
+            <td>${escapar(d.cidade)}</td>
+            <td>${escapar(d.estado)}</td>
+            <td>${escapar(d.pais)}</td>
+            <td>${escapar(d.categoria) || "—"}</td>
+            <td class="text-nowrap">
+              <button class="btn btn-sm btn-outline-primary" data-editar-destino='${JSON.stringify(d)}'>Editar</button>
+              <button class="btn btn-sm btn-outline-danger" data-excluir-destino="${d.id_destino}">Excluir</button>
+            </td>
+          </tr>`
+        )
+        .join("");
+      if (!destinos.length) {
+        tabelaDestinos.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Nenhum destino cadastrado.</td></tr>`;
+      }
+    } catch (erro) {
+      mostrar(destinoFeedback, erro.message || "Não foi possível carregar os destinos.", "erro");
+    }
+  }
+
+  formDestino.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!formDestino.checkValidity()) {
+      formDestino.reportValidity();
+      return;
+    }
+    const dados = {
+      cidade: formDestino.elements["cidade"].value.trim(),
+      estado: formDestino.elements["estado"].value.trim(),
+      pais: formDestino.elements["pais"].value.trim(),
+      categoria: formDestino.elements["categoria"].value.trim() || null,
+      descricao: formDestino.elements["descricao"].value.trim() || null,
+    };
+    btnSalvarDestino.disabled = true;
+    destinoFeedback.hidden = true;
+    try {
+      const id = destinoId.value;
+      if (id) {
+        await atualizarDestino(id, dados);
+        mostrar(destinoFeedback, `Destino ${id} atualizado.`, "ok");
+      } else {
+        const novo = await criarDestino(dados);
+        mostrar(destinoFeedback, `Destino ${novo.id_destino} criado.`, "ok");
+      }
+      sairEdicaoDestino();
+      carregarDestinosTabela();
+      recarregarSelectDestinos(); // o select de pacote reflete o novo destino
+    } catch (erro) {
+      mostrar(destinoFeedback, erro.message || "Não foi possível salvar o destino.", "erro");
+    } finally {
+      btnSalvarDestino.disabled = false;
+    }
+  });
+
+  btnCancelarDestino.addEventListener("click", sairEdicaoDestino);
+
+  tabelaDestinos.addEventListener("click", async (e) => {
+    const bEditar = e.target.closest("[data-editar-destino]");
+    const bExcluir = e.target.closest("[data-excluir-destino]");
+    if (bEditar) {
+      const d = JSON.parse(bEditar.getAttribute("data-editar-destino"));
+      destinoId.value = d.id_destino;
+      formDestino.elements["cidade"].value = d.cidade;
+      formDestino.elements["estado"].value = d.estado;
+      formDestino.elements["pais"].value = d.pais;
+      formDestino.elements["categoria"].value = d.categoria || "";
+      formDestino.elements["descricao"].value = d.descricao || "";
+      btnSalvarDestino.textContent = "Salvar alterações";
+      btnCancelarDestino.hidden = false;
+      formDestino.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } else if (bExcluir) {
+      const id = bExcluir.getAttribute("data-excluir-destino");
+      if (!confirm(`Excluir o destino ${id}? Pacotes que o usam podem impedir a exclusão.`)) return;
+      try {
+        await excluirDestino(id);
+        mostrar(destinoFeedback, `Destino ${id} excluído.`, "ok");
+        carregarDestinosTabela();
+        recarregarSelectDestinos();
+      } catch (erro) {
+        mostrar(destinoFeedback, erro.message || "Não foi possível excluir o destino.", "erro");
+      }
+    }
+  });
+
+  // Repopula o select de destino do formulário de pacote.
+  async function recarregarSelectDestinos() {
+    try {
+      const destinos = await listarDestinos();
+      const atual = selectDestino.value;
+      selectDestino.innerHTML = "";
+      for (const d of destinos) {
+        const opt = document.createElement("option");
+        opt.value = d.id_destino;
+        opt.textContent = `${d.cidade} - ${d.estado}`;
+        selectDestino.appendChild(opt);
+      }
+      if (atual) selectDestino.value = atual;
+    } catch (erro) {
+      /* silencioso: a tabela de destinos já reporta erros */
+    }
+  }
+
+  // ======================= HOSPEDAGENS =======================
+  const formHospedagem = document.getElementById("form-hospedagem");
+  const hospedagemFeedback = document.getElementById("hospedagem-feedback");
+  const tabelaHospedagens = document.getElementById("tabela-hospedagens");
+  const btnSalvarHospedagem = document.getElementById("btn-salvar-hospedagem");
+  const btnCancelarHospedagem = document.getElementById("btn-cancelar-hospedagem");
+  const hospedagemId = document.getElementById("hospedagem-id");
+  const selectPacoteHosp = document.getElementById("hospedagem-pacote");
+
+  function sairEdicaoHospedagem() {
+    formHospedagem.reset();
+    hospedagemId.value = "";
+    btnSalvarHospedagem.textContent = "Adicionar hospedagem";
+    btnCancelarHospedagem.hidden = true;
+  }
+
+  // Popula o select de pacotes da hospedagem.
+  async function recarregarSelectPacotes() {
+    try {
+      const res = await listarPacotes();
+      const pacotes = res.pacotes || [];
+      const atual = selectPacoteHosp.value;
+      selectPacoteHosp.innerHTML = "";
+      for (const p of pacotes) {
+        const opt = document.createElement("option");
+        opt.value = p.id_pacote;
+        const local = p.cidade ? `${p.cidade} - ${p.estado}` : `Pacote ${p.id_pacote}`;
+        opt.textContent = `#${p.id_pacote} · ${local}`;
+        selectPacoteHosp.appendChild(opt);
+      }
+      if (atual) selectPacoteHosp.value = atual;
+    } catch (erro) {
+      mostrar(hospedagemFeedback, erro.message || "Não foi possível carregar os pacotes.", "erro");
+    }
+  }
+
+  async function carregarHospedagens() {
+    try {
+      const hosps = await listarHospedagens();
+      tabelaHospedagens.innerHTML = hosps
+        .map(
+          (h) => `<tr>
+            <td>${h.id_hospedagem}</td>
+            <td>${escapar(h.nome)}</td>
+            <td>#${h.fk_Pacote_id_pacote}</td>
+            <td>${escapar(h.rua)}, ${h.numero} (${escapar(h.cep)})</td>
+            <td>${escapar(h.tipo_quarto) || "—"}</td>
+            <td>${escapar(h.regime_alimentacao) || "—"}</td>
+            <td class="text-nowrap">
+              <button class="btn btn-sm btn-outline-primary" data-editar-hospedagem='${JSON.stringify(h)}'>Editar</button>
+              <button class="btn btn-sm btn-outline-danger" data-excluir-hospedagem="${h.id_hospedagem}">Excluir</button>
+            </td>
+          </tr>`
+        )
+        .join("");
+      if (!hosps.length) {
+        tabelaHospedagens.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Nenhuma hospedagem cadastrada.</td></tr>`;
+      }
+    } catch (erro) {
+      mostrar(hospedagemFeedback, erro.message || "Não foi possível carregar as hospedagens.", "erro");
+    }
+  }
+
+  formHospedagem.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!formHospedagem.checkValidity()) {
+      formHospedagem.reportValidity();
+      return;
+    }
+    const dados = {
+      fk_Pacote_id_pacote: Number(selectPacoteHosp.value),
+      nome: formHospedagem.elements["nome"].value.trim(),
+      rua: formHospedagem.elements["rua"].value.trim(),
+      numero: Number(formHospedagem.elements["numero"].value),
+      cep: formHospedagem.elements["cep"].value.trim(),
+      tipo_quarto: formHospedagem.elements["tipo_quarto"].value.trim() || null,
+      regime_alimentacao: formHospedagem.elements["regime_alimentacao"].value.trim() || null,
+    };
+    btnSalvarHospedagem.disabled = true;
+    hospedagemFeedback.hidden = true;
+    try {
+      const id = hospedagemId.value;
+      if (id) {
+        await atualizarHospedagem(id, dados);
+        mostrar(hospedagemFeedback, `Hospedagem ${id} atualizada.`, "ok");
+      } else {
+        const nova = await criarHospedagem(dados);
+        mostrar(hospedagemFeedback, `Hospedagem ${nova.id_hospedagem} criada.`, "ok");
+      }
+      sairEdicaoHospedagem();
+      carregarHospedagens();
+    } catch (erro) {
+      mostrar(hospedagemFeedback, erro.message || "Não foi possível salvar a hospedagem.", "erro");
+    } finally {
+      btnSalvarHospedagem.disabled = false;
+    }
+  });
+
+  btnCancelarHospedagem.addEventListener("click", sairEdicaoHospedagem);
+
+  tabelaHospedagens.addEventListener("click", async (e) => {
+    const bEditar = e.target.closest("[data-editar-hospedagem]");
+    const bExcluir = e.target.closest("[data-excluir-hospedagem]");
+    if (bEditar) {
+      const h = JSON.parse(bEditar.getAttribute("data-editar-hospedagem"));
+      hospedagemId.value = h.id_hospedagem;
+      selectPacoteHosp.value = h.fk_Pacote_id_pacote;
+      formHospedagem.elements["nome"].value = h.nome;
+      formHospedagem.elements["rua"].value = h.rua;
+      formHospedagem.elements["numero"].value = h.numero;
+      formHospedagem.elements["cep"].value = h.cep;
+      formHospedagem.elements["tipo_quarto"].value = h.tipo_quarto || "";
+      formHospedagem.elements["regime_alimentacao"].value = h.regime_alimentacao || "";
+      btnSalvarHospedagem.textContent = "Salvar alterações";
+      btnCancelarHospedagem.hidden = false;
+      formHospedagem.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } else if (bExcluir) {
+      const id = bExcluir.getAttribute("data-excluir-hospedagem");
+      if (!confirm(`Excluir a hospedagem ${id}?`)) return;
+      try {
+        await excluirHospedagem(id);
+        mostrar(hospedagemFeedback, `Hospedagem ${id} excluída.`, "ok");
+        carregarHospedagens();
+      } catch (erro) {
+        mostrar(hospedagemFeedback, erro.message || "Não foi possível excluir a hospedagem.", "erro");
+      }
+    }
+  });
+
   // Carga inicial.
   carregarDestinos();
   carregarPacotes();
+  carregarDestinosTabela();
+  recarregarSelectPacotes();
+  carregarHospedagens();
   carregarContas();
 });

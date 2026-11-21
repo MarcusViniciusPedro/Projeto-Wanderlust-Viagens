@@ -129,6 +129,114 @@
                     </div>
                 </section>
 
+                <!-- ============ CRUD DE DESTINOS ============ -->
+                <section class="admin-secao" aria-labelledby="sec-destinos">
+                    <h2 id="sec-destinos" class="cadastro-legenda">Destinos</h2>
+
+                    <form id="form-destino" class="admin-form" novalidate>
+                        <input type="hidden" id="destino-id" name="id_destino">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="destino-cidade" class="form-label">Cidade</label>
+                                <input type="text" class="form-control" id="destino-cidade" name="cidade" maxlength="100" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="destino-estado" class="form-label">Estado (UF)</label>
+                                <input type="text" class="form-control" id="destino-estado" name="estado" maxlength="50" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="destino-pais" class="form-label">País</label>
+                                <input type="text" class="form-control" id="destino-pais" name="pais" maxlength="50" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="destino-categoria" class="form-label">Categoria</label>
+                                <input type="text" class="form-control" id="destino-categoria" name="categoria" maxlength="50">
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label for="destino-descricao" class="form-label">Descrição</label>
+                                <input type="text" class="form-control" id="destino-descricao" name="descricao">
+                            </div>
+                        </div>
+
+                        <div id="destino-feedback" class="cadastro-feedback" role="alert" aria-live="polite" hidden></div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" id="btn-salvar-destino">Adicionar destino</button>
+                            <button type="button" class="btn btn-outline-secondary" id="btn-cancelar-destino" hidden>Cancelar edição</button>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive mt-3">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr><th>ID</th><th>Cidade</th><th>Estado</th><th>País</th><th>Categoria</th><th>Ações</th></tr>
+                            </thead>
+                            <tbody id="tabela-destinos"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ============ CRUD DE HOSPEDAGENS ============ -->
+                <section class="admin-secao" aria-labelledby="sec-hospedagens">
+                    <h2 id="sec-hospedagens" class="cadastro-legenda">Hospedagens</h2>
+
+                    <form id="form-hospedagem" class="admin-form" novalidate>
+                        <input type="hidden" id="hospedagem-id" name="id_hospedagem">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="hospedagem-pacote" class="form-label">Pacote</label>
+                                <select class="form-select" id="hospedagem-pacote" name="fk_Pacote_id_pacote" required></select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="hospedagem-nome" class="form-label">Nome</label>
+                                <input type="text" class="form-control" id="hospedagem-nome" name="nome" maxlength="100" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-5 mb-3">
+                                <label for="hospedagem-rua" class="form-label">Rua</label>
+                                <input type="text" class="form-control" id="hospedagem-rua" name="rua" maxlength="150" required>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="hospedagem-numero" class="form-label">Número</label>
+                                <input type="number" class="form-control" id="hospedagem-numero" name="numero" min="1" step="1" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="hospedagem-cep" class="form-label">CEP</label>
+                                <input type="text" class="form-control" id="hospedagem-cep" name="cep" maxlength="9" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="hospedagem-quarto" class="form-label">Tipo de quarto</label>
+                                <input type="text" class="form-control" id="hospedagem-quarto" name="tipo_quarto" maxlength="50">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="hospedagem-regime" class="form-label">Regime de alimentação</label>
+                                <input type="text" class="form-control" id="hospedagem-regime" name="regime_alimentacao" maxlength="50">
+                            </div>
+                        </div>
+
+                        <div id="hospedagem-feedback" class="cadastro-feedback" role="alert" aria-live="polite" hidden></div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" id="btn-salvar-hospedagem">Adicionar hospedagem</button>
+                            <button type="button" class="btn btn-outline-secondary" id="btn-cancelar-hospedagem" hidden>Cancelar edição</button>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive mt-3">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr><th>ID</th><th>Nome</th><th>Pacote</th><th>Endereço</th><th>Quarto</th><th>Regime</th><th>Ações</th></tr>
+                            </thead>
+                            <tbody id="tabela-hospedagens"></tbody>
+                        </table>
+                    </div>
+                </section>
+
                 <!-- ============ RUD DE USUÁRIOS ============ -->
                 <section class="admin-secao" aria-labelledby="sec-contas">
                     <h2 id="sec-contas" class="cadastro-legenda">Contas de usuário</h2>
