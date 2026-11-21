@@ -78,6 +78,16 @@ def criar_usuario(
             """,
             (id_passageiro, hash_senha(dados.senha), gerar_segredo_totp()),
         )
+        # Especializacao: cadastro publico cria sempre Turista, entao insere a
+        # linha correspondente em Conta_turista (necessaria para registrar vendas,
+        # cujo fk_conta_turista referencia essa tabela). Papeis de colaborador
+        # (Agente/Administrador) exigem 'cargo' e sao atribuidos administrativamente,
+        # nao por auto-cadastro, portanto nao recebem especializacao aqui.
+        if dados.papel == Papel.TURISTA:
+            cursor.execute(
+                "INSERT INTO dbo.Conta_turista (id_turista) VALUES (%s)",
+                (id_passageiro,),
+            )
         conn.commit()
     finally:
         conn.close()
