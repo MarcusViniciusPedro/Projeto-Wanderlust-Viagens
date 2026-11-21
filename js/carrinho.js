@@ -182,11 +182,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("ajuda-datas").textContent =
     `Entre ${pacote.data_inicio} e ${pacote.data_fim}.`;
 
-  // Limita pessoas ao estoque.
+  // Limite fixo de 2 pessoas por reserva.
+  const MAX_PESSOAS = 2;
   const campoPessoas = document.getElementById("numero_pessoas");
-  campoPessoas.max = pacote.estoque;
-  document.getElementById("ajuda-pessoas").textContent =
-    `Máximo de ${pacote.estoque} pessoa(s), conforme as vagas do pacote.`;
+  campoPessoas.max = MAX_PESSOAS;
 
   vazio.hidden = true;
   conteudo.hidden = false;
@@ -244,8 +243,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const pessoas = Number(campoPessoas.value);
-    if (pessoas > pacote.estoque) {
-      mostrarFeedback(feedback, `Há apenas ${pacote.estoque} vaga(s) neste pacote.`, "erro");
+    if (pessoas < 1 || pessoas > MAX_PESSOAS) {
+      mostrarFeedback(feedback, `A reserva permite no máximo ${MAX_PESSOAS} pessoas.`, "erro");
       return;
     }
 
