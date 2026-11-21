@@ -68,6 +68,32 @@ def test_login_retorna_token_desafio(
     assert corpo["token_desafio"]  # token de desafio presente
 
 
+def test_cadastro_duplicado_retorna_409(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """E-mail/CPF já existente vira 409 (não 500) com mensagem clara."""
+    from app.usuarios import repository
+
+    def _duplicado(_dados, **_k):
+        raise repository.UsuarioDuplicadoError(
+            "Já existe um cadastro com este e-mail ou CPF."
+        )
+
+    monkeypatch.setattr(repository, "criar_usuario", _duplicado)
+    resp = client.post(
+        "/auth/cadastro",
+        json={
+            "nome": "Fulano",
+            "data_nascimento": "1990-01-01",
+            "cpf": "12345678901",
+            "email": "fulano@ex.com",
+            "senha": "SenhaForte123",
+        },
+    )
+    assert resp.status_code == 409
+    assert "cadastro" in resp.json()["detail"].lower()
+
+
 def test_login_senha_errada_401(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

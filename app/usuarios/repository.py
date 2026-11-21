@@ -10,10 +10,16 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+import pymssql
+
 from app.core.authz import Papel
 from app.core.config import Settings
 from app.core.security import gerar_segredo_totp, hash_senha
 from app.db.session import get_connection
+
+
+class UsuarioDuplicadoError(RuntimeError):
+    """E-mail ou CPF já cadastrado (violação de UNIQUE na tabela Usuario)."""
 from app.usuarios.schemas import (
     ContaAdminSaida,
     StatusConta,
@@ -31,26 +37,39 @@ def criar_usuario(
     conn = get_connection(settings)
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO dbo.Usuario
-                (nome, nome_social, pronome, data_nascimento, cpf, cep,
-                 email, telefone, papel)
-            OUTPUT INSERTED.id_passageiro
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                dados.nome,
-                dados.nome_social,
-                dados.pronome,
-                dados.data_nascimento,
-                dados.cpf,
-                dados.cep,
-                str(dados.email),
-                dados.telefone,
-                dados.papel.value,
-            ),
-        )
+        try:
+            cursor.execute(
+                """
+                INSERT INTO dbo.Usuario
+                    (nome, nome_social, pronome, data_nascimento, cpf, cep,
+                     email, telefone, papel)
+                OUTPUT INSERTED.id_passageiro
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    dados.nome,
+                    dados.nome_social,
+                    dados.pronome,
+                    dados.data_nascimento,
+                    dados.cpf,
+                    dados.cep,
+                    str(dados.email),
+                    dados.telefone,
+                    dados.papel.value,
+                ),
+            )
+        except pymssql.IntegrityError as exc:
+            conn.rollback()
+            texto = str(exc).lower()
+            if "cpf" in texto:
+                campo = "CPF"
+            elif "email" in texto:
+                campo = "e-mail"
+            else:
+                campo = "e-mail ou CPF"
+            raise UsuarioDuplicadoError(
+                f"Já existe um cadastro com este {campo}."
+            ) from exc
         id_passageiro = cursor.fetchone()[0]
         cursor.execute(
             """

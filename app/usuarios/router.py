@@ -67,6 +67,10 @@ def cadastrar(dados: UsuarioCadastro) -> UsuarioSaida:
         return repository.criar_usuario(dados)
     except DatabaseNotConfiguredError as exc:
         raise _erro_db_indisponivel() from exc
+    except repository.UsuarioDuplicadoError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
 
 
 @router.post("/login", response_model=LoginDesafioResposta)
