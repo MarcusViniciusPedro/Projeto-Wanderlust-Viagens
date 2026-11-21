@@ -81,8 +81,8 @@ function montarDetalhe(dl, p) {
   const linhas = [
     ["Preço base", formatarMoeda(p.preco_base)],
     [`Duração (${p.dias} dia(s), +3% por dia extra)`, `× ${fatorDuracao.toFixed(2)}`],
-    [`Regime: ${ROTULO_REGIME[p.regime]}`, `× ${fatorRegime.toFixed(2)}`],
-    [`Nível: ${ROTULO_NIVEL[p.nivel]}`, `× ${fatorNivel.toFixed(2)}`],
+    [`Regime: ${ROTULO_REGIME[p.regime] || "não informado"}`, `× ${fatorRegime.toFixed(2)}`],
+    [`Nível: ${ROTULO_NIVEL[p.nivel] || "não informado"}`, `× ${fatorNivel.toFixed(2)}`],
     [`Alta temporada ${p.alta ? "(dez/jan/jul)" : "(não se aplica)"}`, `× ${fatorTemp.toFixed(2)}`],
     [`Pessoas`, `× ${p.pessoas}`],
   ];
@@ -119,6 +119,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const local =
     pacote.cidade ? `${pacote.cidade} - ${pacote.estado}` : `Pacote ${pacote.id_pacote}`;
+
+  // Nível vem do próprio pacote; regime vem da hospedagem do pacote (a 1ª, se
+  // houver). Ambos entram no cálculo do orçamento sem escolha do cliente.
+  const nivelPacote = pacote.nivel || null;
+  let regimePacote = null;
+  try {
+    const hospedagens = await apiFetch(`/catalogo/hospedagens?fk_pacote=${pacote.id_pacote}`);
+    if (hospedagens && hospedagens.length) {
+      regimePacote = hospedagens[0].regime_alimentacao || null;
+    }
+  } catch (_) { /* sem hospedagem: regime fica neutro no cálculo */ }
 
   // Identidade visual por tipo na prévia (foto quando houver; senão emoji+cor).
   const IMAGEM_TIPO = {
@@ -231,8 +242,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const dias = calcularDias(inicioIso, fimIso);
     const alta = ehAltaTemporada(inicioIso, fimIso);
-    const regime = form.elements["regime"].value;
-    const nivel = form.elements["nivel"].value;
+    // Nível e regime são características do pacote/hospedagem, não escolha do cliente.
+    const regime = regimePacote;
+    const nivel = nivelPacote;
 
     const dados = {
       preco_base: pacote.preco_base,
@@ -287,8 +299,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["Destino", local],
       ["Período escolhido", `${pedidoAtual.inicioIso} a ${pedidoAtual.fimIso} (${pedidoAtual.dias} dia(s))`],
       ["Pessoas", pedidoAtual.pessoas],
-      ["Regime", ROTULO_REGIME[pedidoAtual.regime]],
-      ["Nível", ROTULO_NIVEL[pedidoAtual.nivel]],
+      ["Regime", ROTULO_REGIME[pedidoAtual.regime] || "não informado"],
+      ["Nível", ROTULO_NIVEL[pedidoAtual.nivel] || "não informado"],
       ["Total", formatarMoeda(totalCalculado)],
     ]
       .map(([t, v]) => `<div class="resumo-linha"><dt>${t}</dt><dd>${v}</dd></div>`)
